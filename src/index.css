@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-color: #121214;
+  --text-color: #f3f4f6;
+  --accent-color: #3b82f6;
+  --sidebar-bg: rgba(20, 20, 25, 0.6);
+  --panel-bg: rgba(30, 30, 40, 0.4);
+}
+
+.theme-dark {
+  --bg-color: #121214;
+  --text-color: #f3f4f6;
+  --accent-color: #3b82f6;
+  --sidebar-bg: rgba(20, 20, 25, 0.6);
+  --panel-bg: rgba(30, 30, 40, 0.4);
+}
+
+.theme-light {
+  --bg-color: #f9fafb;
+  --text-color: #111827;
+  --accent-color: #3b82f6;
+  --sidebar-bg: rgba(243, 244, 246, 0.6);
+  --panel-bg: rgba(255, 255, 255, 0.4);
+}
+
+.theme-amoled {
+  --bg-color: #000000;
+  --text-color: #ffffff;
+  --accent-color: #22d3ee; /* cyan-400 */
+  --sidebar-bg: rgba(10, 10, 10, 0.6);
+  --panel-bg: rgba(20, 20, 20, 0.4);
+}
+
+.theme-colored-glass {
+  --bg-color: #1e1b4b; /* dark indigo */
+  --text-color: #e0e7ff;
+  --accent-color: #8b5cf6; /* violet-500 */
+  --sidebar-bg: rgba(30, 27, 75, 0.6);
+  --panel-bg: rgba(49, 46, 129, 0.4);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+  height: 100vh;
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+body.glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-sidebar {
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Custom styles for syntax highlighter keyword mapping */
+.keyword {
+  color: #c084fc; /* purple accent */
+  font-weight: bold;
+}

@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudySpace Hub - Ohm's Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #0A0A0F;
+            --sidebar-bg: #111118;
+            --panel-bg: rgba(20, 20, 30, 0.6);
+            --border-color: rgba(255, 255, 255, 0.05);
+            --text-main: #E5E2EE;
+            --text-muted: #8E8A9F;
+            
+            --accent-purple: #7B2CBF;
+            --accent-purple-hover: #9D4EDD;
+            --accent-blue: #0077B6;
+            --accent-teal: #06D6A0;
+            --accent-orange: #FB8500;
+            
+            --glass-glow: rgba(123, 44, 191, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header i {
+            color: var(--accent-purple-hover);
+            font-size: 1.4rem;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px 10px;
+        }
+
+        .course-section {
+            margin-bottom: 20px;
+        }
+
+        .course-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .file-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+        }
+
+        .file-item.active {
+            background: rgba(123, 44, 191, 0.15);
+            color: #E2CAFF;
+            font-weight: 500;
+            border-left: 3px solid var(--accent-purple-hover);
+        }
+
+        .file-item i {
+            font-size: 0.95rem;
+            width: 16px;
+            text-align: center;
+        }
+
+        .file-item.pdf i { color: #FF4A5A; }
+        .file-item.md i { color: #5A9EFF; }
+        .file-item.code i { color: #06D6A0; }
+        .file-item.cad i { color: #FB8500; }
+
+        /* Workspace Grid Split */
+        .workspace {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: 100%;
+        }
+
+        @media (max-width: 1100px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .workspace-panel {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-dark);
+            height: 100vh;
+        }
+
+        .panel-tab-bar {
+            height: 50px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 20px;
+        }
+
+        .panel-tab {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 15px 5px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .panel-tab.active {
+            color: var(--text-main);
+            border-bottom-color: var(--accent-purple-hover);
+        }
+
+        .panel-content {
+            flex-grow: 1;
+            padding: 25px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Note Editor / Viewer */
+        .note-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 15px;
+        }
+
+        .note-title-bar {
+            font-size: 1.4rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .markdown-editor {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .markdown-preview {
+            display: none;
+            flex-grow: 1;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--text-main);
+        }
+
+        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+            margin: 15px 0 10px;
+            color: white;
+        }
+
+        .markdown-preview code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .markdown-preview pre {
+            background: rgba(0,0,0,0.4);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .markdown-preview pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* Tabs on Right side: CAD, PDF, D2L */
+        .resource-container {
+            height: 100%;
+            display: none;
+        }
+
+        .resource-container.active {
+            display: block;
+        }
+
+        /* CAD Viewer container */
+        #cad-canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #050508;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #cad-info {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+
+        /* D2L Panel */
+        .d2l-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .d2l-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .d2l-card-header {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .d2l-item {
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .d2l-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .d2l-item-title {
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .d2l-item-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .d2l-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .d2l-badge.todo { background: rgba(251, 133, 0, 0.2); color: #FFA33C; }
+        .d2l-badge.grade { background: rgba(6, 214, 160, 0.15); color: var(--accent-teal); }
+
+        .d2l-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(123, 44, 191, 0.1);
+            border: 1px solid rgba(123, 44, 191, 0.2);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        /* PDF Viewer standard iframe */
+        .pdf-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 16px;
+            background: white;
+        }
+
+        /* Smart suggestions / Context-Aware linker */
+        .context-sidebar {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .context-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .context-link-item {
+            font-size: 0.8rem;
+            color: var(--accent-purple-hover);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-bottom: 6px;
+            display: inline-block;
+            margin-right: 15px;
+        }
+
+        .context-link-item:hover {
+            color: white;
+        }
+
+        /* Code Viewer */
+        .code-container {
+            font-family: 'JetBrains Mono', monospace;
+            background: #07070B;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            height: 100%;
+            overflow: auto;
+            white-space: pre;
+            font-size: 0.9rem;
+            color: #C5C1D8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <h1>StudySpace Hub</h1>
+        </div>
+        
+        <div class="sidebar-menu">
+            <!-- Computer Programming Course -->
+            <div class="course-section">
+                <div class="course-title">
+                    <span>Computer Programming</span>
+                    <i class="fa-solid fa-code"></i>
+                </div>
+                <ul class="file-list">
+                    <li class="file-item md active" onclick="loadNote('Lectures.md', 'Sem 2/Computer Programming/Lectures/Lectures.md')">
+                        <i class="fa-brands fa-markdown"></i>
+                        <span>Lectures.md</span>
+                    </li>
+                    <li class="file-item md" onclick="loadNote('Assignments.md', 'Sem 2/Computer Programming/Labs/Assignments and Projects.md')">
+                        <i class="fa-brands fa-markdown"></i>
+                        <span>Assignments.md</span>
+                    </li>
+                    <li class="file-item pdf" onclick="loadPDF('Arrays and Pointers.pdf', 'Sem 2/Computer Programming/Lectures/Arrays and Pointers.pdf')">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Arrays and Pointers.pdf</span>
+                    </li>
+                    <li class="file-item code" onclick="loadCode('Lab 5 - Loops.c', 'Sem 2/Computer Programming/Labs/Lab 5 - Loops/Lab 5 - Loops.c')">
+                        <i class="fa-solid fa-file-code"></i>
+                        <span>Lab 5 - Loops.c</span>
+                    </li>
+                    <li class="file-item code" onclick="loadCode('Calculator +Ohm.c', 'Sem 2/Computer Programming/Labs/Calculator +Ohm.c')">
+                        <i class="fa-solid fa-file-code"></i>
+                        <span>Calculator +Ohm.c</span>
+                    </li>
+                    <li class="file-item cad" onclick="loadCADModel('bracket.stl')">
+                        <i class="fa-solid fa-drafting-compass"></i>
+                        <span>bracket.stl (3D CAD)</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Calculus 2 Course -->
+            <div class="course-section">
+                <div class="course-title">
+                    <span>Calculus 2</span>
+                    <i class="fa-solid fa-square-root-variable"></i>
+                </div>
+                <ul class="file-list">
+                    <li class="file-item md" onclick="loadNote('Power Series.md', 'Sem 2/Differentiation and Integration of Power Series.md')">
+                        <i class="fa-brands fa-markdown"></i>
+                        <span>Power Series.md</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Other Vault Courses -->
+            <div class="course-section">
+                <div class="course-title">
+                    <span>Physics 2</span>
+                    <i class="fa-solid fa-atom"></i>
+                </div>
+            </div>
+            <div class="course-section">
+                <div class="course-title">
+                    <span>Technical Communication</span>
+                    <i class="fa-solid fa-feather"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+        
+        <!-- Left Panel: Note Editor -->
+        <div class="workspace-panel">
+            <div class="panel-tab-bar">
+                <div class="panel-tab active" id="tab-edit" onclick="setEditMode(true)">
+                    <i class="fa-solid fa-pen"></i> Edit
+                </div>
+                <div class="panel-tab" id="tab-preview" onclick="setEditMode(false)">
+                    <i class="fa-solid fa-eye"></i> Preview
+                </div>
+            </div>
+            <div class="panel-content">
+                
+                <!-- Smart Context-Aware Resources Sidebar (Header Inside) -->
+                <div class="context-sidebar" id="context-sidebar">
+                    <div class="context-header">
+                        <i class="fa-solid fa-link"></i>
+                        <span>Smart Links & Lectures</span>
+                    </div>
+                    <div id="context-links">
+                        <span class="context-link-item" onclick="loadPDF('Arrays and Pointers.pdf', 'Sem 2/Computer Programming/Lectures/Arrays and Pointers.pdf')">Arrays and Pointers.pdf</span>
+                        <span class="context-link-item" onclick="loadCode('Calculator +Ohm.c', 'Sem 2/Computer Programming/Labs/Calculator +Ohm.c')">Calculator +Ohm.c</span>
+                    </div>
+                </div>
+                
+                <div class="note-container">
+                    <div class="note-title-bar" id="note-title">Lectures.md</div>
+                    <textarea class="markdown-editor" id="note-editor" oninput="updateNotePreview()"></textarea>
+                    <div class="markdown-preview" id="note-preview"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Resources (PDF, CAD, D2L) -->
+        <div class="workspace-panel">
+            <div class="panel-tab-bar">
+                <div class="panel-tab active" data-res-tab="pdf" onclick="switchResourceTab('pdf')">
+                    <i class="fa-solid fa-file-pdf"></i> Document
+                </div>
+                <div class="panel-tab" data-res-tab="cad" onclick="switchResourceTab('cad')">
+                    <i class="fa-solid fa-cube"></i> CAD Model
+                </div>
+                <div class="panel-tab" data-res-tab="d2l" onclick="switchResourceTab('d2l')">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> D2L Sync
+                </div>
+            </div>
+            <div class="panel-content">
+                
+                <!-- PDF Viewer -->
+                <div class="resource-container active" id="res-pdf">
+                    <iframe id="pdf-viewer" class="pdf-frame" src="Sem 2/Computer Programming/Lectures/Arrays and Pointers.pdf"></iframe>
+                    <div id="docx-viewer" style="display:none; height:100%; overflow:auto; padding:20px; background:#111116; border-radius:16px;"></div>
+                    <div id="code-viewer" class="code-container" style="display:none;"></div>
+                </div>
+
+                <!-- CAD Viewer -->
+                <div class="resource-container" id="res-cad" style="height:100%;">
+                    <div id="cad-canvas-container">
+                        <div id="cad-info">Viewer: drag to rotate, scroll to zoom</div>
+                        <canvas id="cad-canvas" style="width:100%; height:100%;"></canvas>
+                    </div>
+                </div>
+
+                <!-- D2L Sync Hub -->
+                <div class="resource-container" id="res-d2l">
+                    <div class="d2l-status-bar">
+                        <div>
+                            <i class="fa-solid fa-circle-check" style="color:var(--accent-teal); margin-right:5px;"></i>
+                            <span>Synced with <strong>slate.sheridancollege.ca</strong></span>
+                        </div>
+                        <button class="file-item" style="background:var(--accent-purple); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;" onclick="triggerD2LSync()">
+                            <i class="fa-solid fa-sync"></i> Sync Now
+                        </button>
+                    </div>
+
+                    <div class="d2l-grid">
+                        <div class="d2l-card">
+                            <div class="d2l-card-header">
+                                <span>Upcoming Deadlines & Tasks</span>
+                                <i class="fa-solid fa-calendar-alt" style="color:var(--accent-orange)"></i>
+                            </div>
+                            <div class="d2l-item">
+                                <div class="d2l-item-info">
+                                    <span class="d2l-item-title">Lab 6 - Pointers & Pointers to Pointers</span>
+                                    <span class="d2l-item-date">Due in 3 Days (July 9, 2026 at 11:59 PM)</span>
+                                </div>
+                                <span class="d2l-badge todo">To-Do</span>
+                            </div>
+                            <div class="d2l-item">
+                                <div class="d2l-item-info">
+                                    <span class="d2l-item-title">Computer Programming - Midterm Project 2</span>
+                                    <span class="d2l-item-date">Due in 10 Days (July 16, 2026 at 11:59 PM)</span>
+                                </div>
+                                <span class="d2l-badge todo">To-Do</span>
+                            </div>
+                        </div>
+
+                        <div class="d2l-card">
+                            <div class="d2l-card-header">
+                                <span>Recent Grades & Feedback</span>
+                                <i class="fa-solid fa-award" style="color:var(--accent-teal)"></i>
+                            </div>
+                            <div class="d2l-item">
+                                <div class="d2l-item-info">
+                                    <span class="d2l-item-title">Labsheet 5 - Loops Assignment</span>
+                                    <span class="d2l-item-date">Feedback: "Excellent loops structure and validation loops!"</span>
+                                </div>
+                                <span class="d2l-badge grade">10 / 10</span>
+                            </div>
+                            <div class="d2l-item">
+                                <div class="d2l-item-info">
+                                    <span class="d2l-item-title">Quiz 1 - Logic & Conditionals</span>
+                                    <span class="d2l-item-date">Feedback: "Perfect score on all sections."</span>
+                                </div>
+                                <span class="d2l-badge grade">15 / 15</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts (Three.js for CAD) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+
+    <script>
+        // Mock Note Database mapping relative file paths to their markdown content
+        const notesDatabase = {
+            'Sem 2/Computer Programming/Lectures/Lectures.md': `## Lec 5 - Pointers
+- \`&\` = reference operator
+- \`*\` = declaration / dereference operator
+- \`**\` = double pointer, doubly abstracted
+
+---
+
+### Code Example:
+\`\`\`c
+#include <stdio.h>
+
+void main() {
+    int x = 10;
+    int *p = &x;
+    int **pp = &p;
+
+    printf("Value: %d\\n", x);
+    printf("Address: %p\\n", p);
+    printf("Pointer to Pointer Value: %d\\n", **pp);
+}
+\`\`\``,
+            'Sem 2/Computer Programming/Labs/Assignments and Projects.md': `## Upcoming Computer Programming Tasks
+
+- [ ] Lab 6 - Pointers Practice
+- [ ] Project 2 - Custom Desktop App
+- [x] Lab 5 - Loops Submission (Completed)
+
+---
+*Keep tracking progress inside your Obsidian space.*`,
+            'Sem 2/Differentiation and Integration of Power Series.md': `## representations of Functions as Power Series
+$$\\frac{1}{1-x} = \\sum_{n=0}^{\\infty} x^n$$
+
+### Integration & Differentiation
+* Term by term differentiation:
+  $$f'(x) = \\sum_{n=1}^{\\infty} n c_n (x-a)^{n-1}$$
+* Term by term integration:
+  $$\\int f(x) dx = C + \\sum_{n=0}^{\\infty} c_n \\frac{(x-a)^{n+1}}{n+1}$$`
+        };
+
+        // Mock Code Database
+        const codeDatabase = {
+            'Sem 2/Computer Programming/Labs/Lab 5 - Loops/Lab 5 - Loops.c': `/*
+* Ohm Patel
+* Lab 5: Loops
+*/
+
+#include <stdio.h>
+#include <math.h>
+
+void main() {
+    double p = 5000, r = 0.05, a;
+    int max_years = 10, n;
+
+    printf("--- Using for() loop ---\\n");
+    for(n = 1; n <= max_years; n++) {
+        a = p * pow(1.0 + r, (double)n);
+        printf("%d\\t$%.2f\\n", n, a);
+    }
+}`,
+            'Sem 2/Computer Programming/Labs/Calculator +Ohm.c': `// Ohm's Advanced Calculator code
+#include <stdio.h>
+#include <math.h>
+
+void main() {
+    // Array of function pointers...
+}`
+        };
+
+        // Active State
+        let currentNotePath = 'Sem 2/Computer Programming/Lectures/Lectures.md';
+        let editMode = true;
+
+        // Initialize note
+        document.getElementById('note-editor').value = notesDatabase[currentNotePath];
+        updateNotePreview();
+
+        // Switch edit/preview
+        function setEditMode(isEdit) {
+            editMode = isEdit;
+            const tabEdit = document.getElementById('tab-edit');
+            const tabPreview = document.getElementById('tab-preview');
+            const editor = document.getElementById('note-editor');
+            const preview = document.getElementById('note-preview');
+
+            if (isEdit) {
+                tabEdit.classList.add('active');
+                tabPreview.classList.remove('active');
+                editor.style.display = 'block';
+                preview.style.display = 'none';
+            } else {
+                tabEdit.classList.remove('active');
+                tabPreview.classList.add('active');
+                editor.style.display = 'none';
+                preview.style.display = 'block';
+                updateNotePreview();
+            }
+        }
+
+        // Parse markdown simply
+        function updateNotePreview() {
+            const raw = document.getElementById('note-editor').value;
+            notesDatabase[currentNotePath] = raw; // Save in-memory
+            
+            // Simple markdown parser
+            let html = raw
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/^\- (.*$)/gim, '<li>$1</li>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\n/g, '<br>');
+            
+            document.getElementById('note-preview').innerHTML = html;
+        }
+
+        // Sidebar Load Handlers
+        function loadNote(title, path) {
+            currentNotePath = path;
+            document.getElementById('note-title').innerText = title;
+            document.getElementById('note-editor').value = notesDatabase[path] || '';
+            setEditMode(true);
+            updateNotePreview();
+            updateActiveItem(title);
+            updateContextLinks(title);
+        }
+
+        function loadPDF(title, path) {
+            // Show PDF viewer tab
+            switchResourceTab('pdf');
+            document.getElementById('docx-viewer').style.display = 'none';
+            document.getElementById('code-viewer').style.display = 'none';
+            
+            const viewer = document.getElementById('pdf-viewer');
+            viewer.style.display = 'block';
+            viewer.src = path;
+            updateActiveItem(title);
+        }
+
+        function loadCode(title, path) {
+            switchResourceTab('pdf'); // Code replaces PDF container on display
+            document.getElementById('pdf-viewer').style.display = 'none';
+            document.getElementById('docx-viewer').style.display = 'none';
+            
+            const codeViewer = document.getElementById('code-viewer');
+            codeViewer.style.display = 'block';
+            codeViewer.textContent = codeDatabase[path] || '// Code file content';
+            updateActiveItem(title);
+        }
+
+        function updateActiveItem(title) {
+            document.querySelectorAll('.file-item').forEach(item => {
+                if (item.querySelector('span').innerText === title) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // Switch right resource tabs
+        function switchResourceTab(tabName) {
+            document.querySelectorAll('[data-res-tab]').forEach(tab => {
+                if (tab.getAttribute('data-res-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            document.querySelectorAll('.resource-container').forEach(container => {
+                if (container.id === `res-${tabName}`) {
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                }
+            });
+            
+            if (tabName === 'cad') {
+                resizeCADCanvas();
+            }
+        }
+
+        // Context-Aware linking logic
+        function updateContextLinks(title) {
+            const contextContainer = document.getElementById('context-links');
+            const sidebar = document.getElementById('context-sidebar');
+            
+            if (title === 'Lectures.md') {
+                sidebar.style.display = 'block';
+                contextContainer.innerHTML = `
+                    <span class="context-link-item" onclick="loadPDF('Arrays and Pointers.pdf', 'Sem 2/Computer Programming/Lectures/Arrays and Pointers.pdf')">Arrays and Pointers.pdf</span>
+                    <span class="context-link-item" onclick="loadCode('Calculator +Ohm.c', 'Sem 2/Computer Programming/Labs/Calculator +Ohm.c')">Calculator +Ohm.c</span>
+                `;
+            } else if (title === 'Power Series.md') {
+                sidebar.style.display = 'block';
+                contextContainer.innerHTML = `
+                    <span class="context-link-item" style="color:var(--accent-orange)">Formula: Integral of c * x^p dx</span>
+                `;
+            } else {
+                sidebar.style.display = 'none';
+            }
+        }
+
+        // Mock D2L Sync Action
+        function triggerD2LSync() {
+            alert("Fetching grades, assignments, and calendar events from Brightspace/SLATE...");
+        }
+
+        // ==========================================
+        // 3D CAD MODEL RENDERER (THREE.JS)
+        // ==========================================
+        let scene, camera, renderer, mesh, controls;
+
+        function initCADViewer() {
+            const container = document.getElementById('cad-canvas-container');
+            const canvas = document.getElementById('cad-canvas');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050508);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 100);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 2);
+            dirLight1.position.set(1, 1, 1).normalize();
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x7b2cbf, 2.5); // Custom colored workspace lights
+            dirLight2.position.set(-1, -1, -1).normalize();
+            scene.add(dirLight2);
+
+            // Render a default mock 3D bracket model (a combination of cubes and cylinders)
+            const group = new THREE.Group();
+            
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x8e8a9f, 
+                roughness: 0.4, 
+                metalness: 0.7,
+                flatShading: true
+            });
+
+            // Base plate
+            const baseGeo = new THREE.BoxGeometry(40, 5, 20);
+            const base = new THREE.Mesh(baseGeo, material);
+            group.add(base);
+
+            // Vertical brace
+            const braceGeo = new THREE.BoxGeometry(10, 20, 20);
+            const brace = new THREE.Mesh(braceGeo, material);
+            brace.position.set(-15, 10, 0);
+            group.add(brace);
+
+            // Cylindrical bracket flange
+            const cylGeo = new THREE.CylinderGeometry(8, 8, 25, 32);
+            const cylinder = new THREE.Mesh(cylGeo, material);
+            cylinder.rotation.x = Math.PI / 2;
+            cylinder.position.set(5, 8, 0);
+            group.add(cylinder);
+
+            mesh = group;
+            scene.add(mesh);
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        function resizeCADCanvas() {
+            const container = document.getElementById('cad-canvas-container');
+            if (renderer && camera) {
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+            }
+        }
+
+        function loadCADModel(fileName) {
+            switchResourceTab('cad');
+            // Mock file load update
+            document.getElementById('cad-info').innerText = `Model: ${fileName} | Drag to orbit | Scroll to scale`;
+        }
+
+        // Initialize CAD viewer
+        initCADViewer();
+        
+        // Listen to window resizing
+        window.addEventListener('resize', resizeCADCanvas);
+    </script>
+</body>
+</html>
