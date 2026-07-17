@@ -1,32 +1,101 @@
-# React + TypeScript + Vite
+# StudySpace
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Status](https://img.shields.io/badge/status-alpha-orange.svg)
+![Tauri](https://img.shields.io/badge/Tauri-2-ffc131.svg)
+![React](https://img.shields.io/badge/React-19-61dafb.svg)
 
-Currently, two official plugins are available:
+A Tauri 2 + React 19 desktop study workspace with a glassmorphic dark UI. Combines Markdown notes, file management, document/code viewing, 3D CAD preview, and D2L Brightspace calendar sync into a single offline-first desktop application.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- **Core Tauri desktop app** with glassmorphic dark UI
+- **Markdown note editor** with live preview
+- **File explorer sidebar** with vault navigation
+- **PDF document viewer**
+- **C/C++ code viewer** with syntax highlighting and inline editing
+- **3D CAD model viewer** (STL/OBJ) with Three.js
+- **Office document conversion** via LibreOffice
+- **D2L Brightspace iCal calendar sync**
+- **Custom theme engine** (Dark, Light, AMOLED, Colored Glass)
+- **Modular feature toggles**
+- **External file location imports** (local, WebDAV, SMB)
+- **Open in default system application**
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Architecture
 
-## Expanding the Oxlint configuration
+Tauri 2 backend (Rust) + React frontend (TypeScript, Vite, Tailwind CSS).
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Prerequisites
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+- Rust toolchain (latest stable)
+- Node.js 20+
+- npm
+- Optional: LibreOffice for document conversion
+
+## Quick Start
+
+```bash
+git clone https://github.com/ohmpatel3877/StudySpace.git
+cd StudySpace
+npm install
+npm run dev          # Vite dev server only (browser)
+npx tauri dev        # Full Tauri desktop app
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Vite dev server (port 5173) |
+| `npm run build` | Type-check + build |
+| `npm run lint` | oxlint |
+| `npm run test:e2e:mock` | Playwright E2E tests |
+| `npx tauri dev` | Tauri desktop dev mode |
+| `npx tauri build` | Build installer/binary |
+
+## Building the Installer
+
+```bash
+npx tauri build
+```
+
+The installer will be in `src-tauri/target/release/bundle/`.
+
+## Testing
+
+- 115 E2E tests across 12 spec files
+- 4-tier methodology: Feature Coverage, Boundary/Corner Cases, Cross-Feature Combinations, Real-World Scenarios
+- Run: `npm run test:e2e:mock`
+- Tests use a mocked Tauri IPC layer — no real Tauri runtime needed
+- Test infrastructure detailed in `TEST_INFRA.md`
+
+## Project Structure
+
+```
+StudySpace/
+├── src/            # React frontend
+│   ├── components/ # Layout, Editor, Explorer, Viewer, etc.
+│   ├── context/    # AppContext (global state)
+│   └── main.tsx    # Entry point
+├── src-tauri/      # Rust backend
+│   └── src/        # main.rs, commands.rs (10 commands)
+└── tests/          # Playwright E2E tests + mock infrastructure
+```
+
+## Configuration
+
+- **TypeScript**: 3 tsconfigs with project references, strict unused locals/params
+- **Linting**: oxlint (not ESLint)
+- **Styling**: Tailwind CSS 3 + glassmorphic CSS variables
+- **State**: Single React Context (no Redux/Zustand)
+
+## Related Documents
+
+- `AGENTS.md` — Agent onboarding instructions
+- `PROJECT.md` — Full architecture spec and interface contracts
+- `TEST_INFRA.md` — E2E test methodology and test case listing
+
+## License
+
+MIT

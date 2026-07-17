@@ -117,3 +117,13 @@ StudySpace/
 | `tests/mocks/tauri-ipc-mock.ts` | **Must import test from here**, not `@playwright/test` |
 | `src/context/AppContext.tsx` | Global state, Tauri IPC wrapper with fallback |
 | `.oxlintrc.json` | Linter config — oxlint, not ESLint |
+
+## Related Repositories
+
+| Repo | Description | URL |
+|------|-------------|-----|
+| study-tutor | Adaptive exam prep PWA with spaced repetition, AcademyGraph knowledge graph | github.com/ohmpatel3877/study-tutor |
+| ai-memory-core | Python 68-tool MCP server (BM25 memory, skill router, trace system) | github.com/ohmpatel3877/ai-memory-core |
+| agent-memory-mcp | TypeScript MCP memory server (LanceDB, cortical architecture, KG) | github.com/ohmpatel3877/agent-memory-mcp |
+| wshobson-agents | Multi-harness agentic plugin marketplace (94 plugins, 203 agents) | github.com/ohmpatel3877/wshobson-agents |
+| opencad | CAD collaboration pnpm monorepo | github.com/ohmpatel3877/opencad |

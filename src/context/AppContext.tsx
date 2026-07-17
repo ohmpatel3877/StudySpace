@@ -28,8 +28,8 @@ interface AppContextType {
   setActiveFile: (file: FileObject | null) => void;
   features: string[];
   setFeatures: (features: string[]) => void;
-  currentNav: 'notes' | 'd2l' | 'settings';
-  setCurrentNav: (nav: 'notes' | 'd2l' | 'settings') => void;
+  currentNav: 'notes' | 'd2l' | 'settings' | 'graph';
+  setCurrentNav: (nav: 'notes' | 'd2l' | 'settings' | 'graph') => void;
   explorerOpen: boolean;
   setExplorerOpen: (open: boolean) => void;
   vaultFiles: FileObject[];
@@ -382,7 +382,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [theme, setThemeState] = useState<string>('Dark Mode');
   const [activeFile, setActiveFile] = useState<FileObject | null>(null);
   const [features, setFeatures] = useState<string[]>(['d2l_sync', 'cad_viewer']);
-  const [currentNav, setCurrentNav] = useState<'notes' | 'd2l' | 'settings'>('notes');
+  const [currentNav, setCurrentNav] = useState<'notes' | 'd2l' | 'settings' | 'graph'>('notes');
   const [explorerOpen, setExplorerOpen] = useState<boolean>(true);
   const [vaultFiles, setVaultFiles] = useState<FileObject[]>([]);
   const [settings, setSettings] = useState<AppSettings>({

@@ -5,6 +5,7 @@ import Editor from './Editor';
 import Viewer from './Viewer';
 import D2LDashboard from './D2LDashboard';
 import Settings from './Settings';
+import KnowledgeGraph from './KnowledgeGraph';
 
 const Layout: React.FC = () => {
   const { currentNav, setCurrentNav, features } = useApp();
@@ -67,6 +68,15 @@ const Layout: React.FC = () => {
             </button>
           )}
           <button
+            data-testid="tab-graph"
+            onClick={() => setCurrentNav('graph')}
+            className={`w-full text-left px-4 py-2 rounded transition ${
+              currentNav === 'graph' ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-800'
+            }`}
+          >
+            Knowledge Graph
+          </button>
+          <button
             data-testid="tab-settings"
             onClick={() => setCurrentNav('settings')}
             className={`w-full text-left px-4 py-2 rounded transition ${
@@ -115,6 +125,13 @@ const Layout: React.FC = () => {
         {currentNav === 'd2l' && (
           <div className="absolute inset-0 bg-slate-950 z-10 overflow-y-auto">
             <D2LDashboard />
+          </div>
+        )}
+
+        {/* Knowledge Graph Overlay */}
+        {currentNav === 'graph' && (
+          <div className="absolute inset-0 bg-slate-950 z-10 overflow-hidden">
+            <KnowledgeGraph />
           </div>
         )}
 
