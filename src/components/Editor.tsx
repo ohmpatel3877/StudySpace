@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp, safeInvoke } from '../context/AppContext';
 
 const Editor: React.FC = () => {
@@ -55,10 +55,10 @@ const Editor: React.FC = () => {
     }
   };
 
-  const isDefaultAppBtnDisabled =
-    !currentName ||
-    !currentExt ||
-    (currentExt.toLowerCase() === 'stl' && !features.includes('cad_viewer'));
+  const isDefaultAppBtnDisabled = useMemo(
+    () => !currentName || !currentExt || (currentExt.toLowerCase() === 'stl' && !features.includes('cad_viewer')),
+    [currentName, currentExt, features]
+  );
 
   const parseMarkdown = (markdown: string) => {
     let html = markdown;

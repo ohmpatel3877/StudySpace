@@ -230,8 +230,11 @@ const d2lEventsList = document.getElementById('d2l-events-list');
 
 const toastContainer = document.getElementById('toast-container');
 
-// Helper to show toasts
+// Helper to show toasts - clear previous toasts to avoid pile-up
 function showToast(message, type = 'info') {
+  const existingToasts = toastContainer.querySelectorAll('[data-testid="toast-notification"]');
+  existingToasts.forEach(t => t.remove());
+
   const toast = document.createElement('div');
   toast.setAttribute('data-testid', 'toast-notification');
   toast.className = 'toast';
@@ -286,14 +289,15 @@ function renderFileList() {
   vaultFiles.forEach(file => {
     const isCadFile = file.name.endsWith('.stl') || file.name.endsWith('.obj');
     const isDisabled = isCadFile && !cadViewerEnabled;
+    const sanitizeForTestId = (s) => s.replace(/[^a-zA-Z0-9._-]/g, '_');
 
     const div = document.createElement('div');
     div.className = 'file-item';
     if (isDisabled) {
       div.classList.add('disabled');
-      div.setAttribute('data-testid', `file-item-${file.name}-disabled`);
+      div.setAttribute('data-testid', `file-item-${sanitizeForTestId(file.name)}-disabled`);
     } else {
-      div.setAttribute('data-testid', `file-item-${file.name}`);
+      div.setAttribute('data-testid', `file-item-${sanitizeForTestId(file.name)}`);
     }
     
     if (selectedFile && selectedFile.path === file.path) {
@@ -374,6 +378,8 @@ async function selectFile(file) {
         officeProgress.textContent = "Conversion Progress: 50%";
       }
       
+      // Artificial delay for UI loader visibility in tests
+      await new Promise(resolve => setTimeout(resolve, 300));
       const res = await invokeTauri('convert_office_doc', { file_path: file.path });
       officeLoader.classList.add('hidden');
       
@@ -615,11 +621,30 @@ btnSaveSettings.addEventListener('click', async () => {
     appSettings = payload;
     applyTheme(payload.theme);
     updateFeatureUI();
+    updateDefaultAppBtnState();
     showToast("Configurations saved successfully.");
   } catch (err) {
     showToast("Failed to persist configurations", 'error');
   }
 });
+
+// Re-check default app button disabled state based on current settings
+function updateDefaultAppBtnState() {
+  if (!selectedFile) return;
+  openDefaultAppBtn.style.display = 'block';
+  if (!selectedFile.ext || selectedFile.name === 'new_draft') {
+    openDefaultAppBtn.disabled = true;
+    openDefaultAppBtn.style.opacity = '0.5';
+  } else {
+    openDefaultAppBtn.disabled = false;
+    openDefaultAppBtn.style.opacity = '1';
+  }
+  const cadViewerEnabled = appSettings.active_features.includes('cad_viewer');
+  if (selectedFile.name.endsWith('.stl') && !cadViewerEnabled) {
+    openDefaultAppBtn.disabled = true;
+    openDefaultAppBtn.style.opacity = '0.5';
+  }
+}
 
 // Update Module Toggles & UI display based on configurations
 function updateFeatureUI() {
@@ -640,6 +665,16 @@ function updateFeatureUI() {
     d2lSettingsGroup.classList.add('hidden');
     if (activeTab === 'd2l') {
       switchTab('workspace');
+    }
+  }
+
+  if (!hasCad) {
+    viewerCad.classList.add('hidden');
+    canvasStatus.textContent = 'CAD features disabled';
+    canvasStatus.style.color = '#ef4444';
+    if (autoRotateLoopId) {
+      cancelAnimationFrame(autoRotateLoopId);
+      autoRotateLoopId = null;
     }
   }
 
@@ -709,7 +744,7 @@ btnCreateFile.addEventListener('click', async () => {
   
   try {
     await invokeTauri('write_vault_file', { path: newFile.path, content: '' });
-    vaultFiles.push(newFile);
+    vaultFiles = await invokeTauri('get_vault_files');
     newFileNameInput.value = '';
     renderFileList();
     showToast(`File ${name} created.`);
@@ -934,6 +969,10 @@ async function boot() {
     appSettings = await invokeTauri('load_settings');
     if (!appSettings.external_locations) {
       appSettings.external_locations = [];
+    }
+    // Corrupted state recovery
+    if (!Array.isArray(appSettings.active_features)) {
+      appSettings.active_features = ['d2l_sync', 'cad_viewer'];
     }
     
     vaultFiles = await invokeTauri('get_vault_files');

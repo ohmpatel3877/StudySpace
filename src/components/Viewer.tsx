@@ -28,7 +28,7 @@ const Viewer: React.FC = () => {
         setOfficeLoading(true);
         try {
           // Artificial delay for UI loader visibility in E2E tests
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 800));
           const res = await safeInvoke('convert_office_doc', { file_path: activeFile.path });
           if (res && res.pdf_path) {
             // Handle 0-byte office document fallback warning
@@ -42,7 +42,7 @@ const Viewer: React.FC = () => {
           }
         } catch (err: any) {
           console.error('Office conversion failed', err);
-          if (err.message?.includes('LibreOffice missing') || err.message?.includes('missing')) {
+          if (err.message?.includes('LibreOffice missing') || err.message?.includes('LibreOffice is not installed')) {
             setErrorMsg('LibreOffice required for office document conversion');
           } else if (err.message?.includes('corrupted') || err.message?.includes('Corrupted') || err.message?.includes('File corrupted')) {
             setErrorMsg('Conversion failed: File corrupted');

@@ -19,7 +19,7 @@ export const test = base.extend({
         { name: 'large.pptx', path: '/vault/large.pptx', is_dir: false, ext: 'pptx' }
       ];
 
-      let mockSettings = {
+      const defaultSettings = {
         theme: 'Dark Mode',
         active_features: ['d2l_sync', 'cad_viewer'],
         d2l_feed_url: 'https://d2l.myuniversity.edu/feed.ics',
@@ -39,24 +39,45 @@ export const test = base.extend({
         '/vault/gear.stl': 'BASE64_MOCK_DATA_STREAM'
       };
 
+      const defaultState = {
+        files: mockVaultFiles,
+        settings: { ...defaultSettings },
+        events: mockD2lEvents,
+        contents: { ...mockFileContent },
+        lastCommand: null,
+        commandsLog: [] as any[],
+        libreOfficeInstalled: true
+      };
+
       // Load from sessionStorage if available to persist changes across reload
       const savedOverride = sessionStorage.getItem('__MOCK_STATE_OVERRIDE__');
       console.log('TAURI_MOCK_INIT: savedOverride exists =', !!savedOverride);
       let state: any;
       if (savedOverride) {
-        console.log('TAURI_MOCK_INIT: Loading state from sessionStorage:', savedOverride);
-        state = JSON.parse(savedOverride);
-      } else {
+        console.log('TAURI_MOCK_INIT: Loading state from sessionStorage');
+        const parsed = JSON.parse(savedOverride);
+        // Ensure all expected keys exist; merge with defaults for any missing
         state = {
-          files: mockVaultFiles,
-          settings: mockSettings,
-          events: mockD2lEvents,
-          contents: mockFileContent,
-          lastCommand: null,
-          commandsLog: [] as any[],
-          libreOfficeInstalled: true
+          files: parsed.files ?? defaultState.files,
+          settings: { ...defaultSettings, ...(parsed.settings || {}) },
+          events: parsed.events ?? defaultState.events,
+          contents: parsed.contents ?? { ...defaultState.contents },
+          lastCommand: parsed.lastCommand ?? null,
+          commandsLog: Array.isArray(parsed.commandsLog) ? parsed.commandsLog : [],
+          libreOfficeInstalled: parsed.libreOfficeInstalled !== undefined ? parsed.libreOfficeInstalled : true
         };
+        console.log('TAURI_MOCK_INIT: state.settings.theme =', state.settings.theme);
+        console.log('TAURI_MOCK_INIT: state.settings.active_features =', state.settings.active_features);
+        console.log('TAURI_MOCK_INIT: state.files.length =', state.files.length);
+      } else {
+        state = { ...defaultState, settings: { ...defaultSettings }, contents: { ...mockFileContent }, commandsLog: [] };
       }
+
+      // Sync state back to sessionStorage on any mutation immediately
+      const syncState = () => {
+        const val = JSON.stringify(state);
+        sessionStorage.setItem('__MOCK_STATE_OVERRIDE__', val);
+      };
 
       function makeDeepProxy(obj: any, onChange: () => void): any {
         const handler: ProxyHandler<any> = {
@@ -64,6 +85,9 @@ export const test = base.extend({
             try {
               const value = Reflect.get(target, property);
               if (value && typeof value === 'object') {
+                // Use the proxy target's object, not a new wrapper each time,
+                // to avoid nested-proxy proliferation. But we MUST wrap arrays
+                // so that .push() etc trigger onChange.
                 return new Proxy(value, handler);
               }
               return value;
@@ -85,15 +109,7 @@ export const test = base.extend({
         return new Proxy(obj, handler);
       }
 
-      // Sync state back to sessionStorage on any update
-      const syncState = () => {
-        const val = JSON.stringify(state);
-        console.log('TAURI_MOCK_SYNC: Writing state to sessionStorage:', val);
-        sessionStorage.setItem('__MOCK_STATE_OVERRIDE__', val);
-      };
-      window.addEventListener('beforeunload', syncState);
-
-      // Expose to window context
+      // Expose to window context – the proxy wraps state so every mutation syncs
       (window as any).__MOCK_STATE__ = makeDeepProxy(state, syncState);
 
       // Mock Tauri IPC
@@ -111,7 +127,6 @@ export const test = base.extend({
           if (error && (window as any)[error]) {
             (window as any)[error](err);
           }
-          throw new Error(err);
         };
 
         const activeState = (window as any).__MOCK_STATE__;
@@ -166,8 +181,13 @@ export const test = base.extend({
               }
               return respond(activeState.events);
             }
-            case 'load_settings':
-              return respond(activeState.settings);
+            case 'load_settings': {
+              const s = { ...activeState.settings };
+              if (!Array.isArray(s.active_features)) {
+                s.active_features = ['d2l_sync', 'cad_viewer'];
+              }
+              return respond(s);
+            }
             case 'save_settings': {
               const settings = message.settings || (cmd_args && cmd_args.settings) || message.cmd_args?.settings;
               activeState.settings = { ...activeState.settings, ...settings };

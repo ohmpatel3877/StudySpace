@@ -53,6 +53,109 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // Fallback logic for web environment or when Tauri is missing
 const handleFallback = async (cmd: string, args?: any): Promise<any> => {
   console.log(`[Tauri Fallback] cmd: ${cmd}`, args);
+
+  // If mock state is available (Playwright tests), use it directly
+  // before falling back to localStorage
+  const mockState = typeof window !== 'undefined' ? (window as any).__MOCK_STATE__ : null;
+  if (mockState) {
+    console.log('[Tauri Fallback] Using mock state for cmd:', cmd);
+    switch (cmd) {
+      case 'load_settings': {
+        const s = { ...mockState.settings };
+        if (!Array.isArray(s.active_features)) {
+          s.active_features = ['d2l_sync', 'cad_viewer'];
+        }
+        return s;
+      }
+      case 'save_settings': {
+        const settings = args?.settings || args;
+        Object.assign(mockState.settings, settings);
+        return null;
+      }
+      case 'get_vault_files':
+        return [...mockState.files];
+      case 'read_vault_file': {
+        const path = args?.path;
+        if (path && mockState.contents[path] !== undefined) {
+          return mockState.contents[path];
+        }
+        if (path?.endsWith('.stl') || path?.endsWith('.pdf') || path?.includes('/temp/')) {
+          return 'BASE64_MOCK_DATA_STREAM';
+        }
+        if (path === '/vault/welcome.md') return '# Welcome\nStudySpace is active!';
+        if (path === '/vault/homework.md') return '# Homework 1\nPending answers...';
+        if (path === '/vault/solver.cpp') return '#include <iostream>\n\nint main() {\n  std::cout << "Hello World";\n  return 0;\n}';
+        throw new Error('File not found');
+      }
+      case 'write_vault_file': {
+        const path = args?.path;
+        const content = args?.content;
+        if (path?.includes('locked') || path?.includes('readonly')) {
+          throw new Error('Permission denied');
+        }
+        mockState.contents[path] = content;
+        const filename = path.split('/').pop() || 'file';
+        const ext = filename.split('.').pop() || '';
+        if (!mockState.files.some((f: any) => f.path === path)) {
+          mockState.files.push({ name: filename, path, is_dir: false, ext });
+        }
+        return null;
+      }
+      case 'fetch_and_parse_d2l': {
+        const url = args?.url || args;
+        if (!url || !url.startsWith('http')) {
+          throw new Error('Invalid iCal feed URL');
+        }
+        return [...mockState.events];
+      }
+      case 'import_external_location': {
+        const { location_type, path_or_url, credentials } = args;
+        if (location_type === 'webdav' && credentials?.password === 'invalid') {
+          throw new Error('Authentication failed');
+        }
+        if (!path_or_url || path_or_url === '') {
+          throw new Error('Malformed path or URL');
+        }
+        if (path_or_url === '/locked_folder') {
+          throw new Error('Permission denied');
+        }
+        mockState.settings.external_locations.push({ location_type, path_or_url });
+        const extName = path_or_url.split('/').pop() || 'ext';
+        mockState.files.push({ name: `external_${extName}_note.md`, path: `${path_or_url}/external_${extName}_note.md`, is_dir: false, ext: 'md' });
+        mockState.files.push({ name: `external_${extName}_mesh.stl`, path: `${path_or_url}/external_${extName}_mesh.stl`, is_dir: false, ext: 'stl' });
+        mockState.contents[`${path_or_url}/external_${extName}_note.md`] = `# External Imported Note\nThis note belongs to ${path_or_url}!`;
+        return null;
+      }
+      case 'remove_external_location': {
+        const { path_or_url } = args;
+        mockState.settings.external_locations = mockState.settings.external_locations.filter(
+          (loc: any) => loc.path_or_url !== path_or_url
+        );
+        mockState.files = mockState.files.filter((f: any) => !f.path.startsWith(path_or_url));
+        return null;
+      }
+      case 'convert_office_doc': {
+        const { file_path } = args;
+        if (!mockState.libreOfficeInstalled) {
+          throw new Error('LibreOffice missing');
+        }
+        if (file_path.includes('corrupt.docx')) throw new Error('Conversion failed: File corrupted');
+        if (file_path.includes('zero.docx')) return { pdf_path: '/temp/zero.pdf' };
+        if (file_path.includes('large.pptx')) return { pdf_path: '/temp/large.pdf' };
+        return { pdf_path: '/temp/converted_document.pdf' };
+      }
+      case 'open_in_default_app': {
+        const { file_path } = args;
+        if (file_path.includes('missing.md')) throw new Error('File not found');
+        if (file_path.includes('no_assoc.md')) throw new Error('No default application associated');
+        if (file_path.includes('denied.md')) throw new Error('Access denied');
+        return null;
+      }
+      default:
+        throw new Error(`Unhandled fallback command: ${cmd}`);
+    }
+  }
+
   switch (cmd) {
     case 'load_settings': {
       try {

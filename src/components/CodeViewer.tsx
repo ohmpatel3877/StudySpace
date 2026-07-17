@@ -37,6 +37,7 @@ const CodeViewer: React.FC<CodeViewerProps> = ({ path, onError }) => {
         showToast('Inline changes saved successfully');
       } catch (err: any) {
         console.error('Failed to save inline changes', err);
+        setIsEditing(false);
         if (err.message?.includes('Permission denied') || path.includes('locked')) {
           showToast('Permission denied');
         } else {

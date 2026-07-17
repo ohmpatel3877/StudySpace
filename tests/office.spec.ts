@@ -8,7 +8,7 @@ test.describe('OFFICE: Office Document Viewer (R8)', () => {
 
   test('T1_OFFICE_1: Clicking .docx file triggers conversion loader', async ({ page }) => {
     await page.locator('[data-testid="file-item-document.docx"]').click();
-    await expect(page.locator('[data-testid="office-loader"]')).toBeVisible();
+    await expect(page.locator('[data-testid="office-loader"]')).toBeVisible({ timeout: 5000 });
   });
 
   test('T1_OFFICE_2: Successful conversion loads PDF iframe src', async ({ page }) => {

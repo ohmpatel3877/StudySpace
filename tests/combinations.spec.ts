@@ -16,7 +16,7 @@ test.describe('T3: Cross-Feature Combinations', () => {
     await page.locator('[data-testid="file-item-welcome.md"]').click();
     await page.locator('[data-testid="save-button"]').click();
     
-    const toast1 = page.locator('[data-testid="toast-notification"]');
+    const toast1 = page.locator('[data-testid="toast-notification"]').last();
     await expect(toast1).toHaveClass(/border-violet-500/);
 
     // 2. AMOLED Mode (Cyan Accent)
@@ -27,7 +27,7 @@ test.describe('T3: Cross-Feature Combinations', () => {
     await page.locator('[data-testid="tab-workspace"]').click();
     await page.locator('[data-testid="save-button"]').click();
     
-    const toast2 = page.locator('[data-testid="toast-notification"]');
+    const toast2 = page.locator('[data-testid="toast-notification"]').last();
     await expect(toast2).toHaveClass(/border-cyan-400/);
   });
 

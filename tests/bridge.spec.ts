@@ -37,7 +37,7 @@ test.describe('BRIDGE: Open in Default App (R10)', () => {
     for (const f of files) {
       await page.locator(`[data-testid="file-item-${f}"]`).click();
       await page.locator('[data-testid="open-default-app-btn"]').click();
-      await expect(page.locator('[data-testid="toast-notification"]')).toHaveText(new RegExp(`Opening ${f} in default`));
+      await expect(page.locator('[data-testid="toast-notification"]').last()).toHaveText(new RegExp(`Opening ${f} in default`));
     }
   });
 
@@ -64,7 +64,7 @@ test.describe('BRIDGE: Open in Default App (R10)', () => {
     await page.locator('[data-testid="file-item-missing.md"]').click();
     await page.locator('[data-testid="open-default-app-btn"]').click();
     
-    await expect(page.locator('[data-testid="toast-notification"]')).toHaveText(/File not found/);
+    await expect(page.locator('[data-testid="toast-notification"]').last()).toHaveText(/File not found/);
   });
 
   test('T2_BRIDGE_2: Command failure (no default program associated) shows warning', async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe('BRIDGE: Open in Default App (R10)', () => {
     await page.locator('[data-testid="file-item-no_assoc.md"]').click();
     await page.locator('[data-testid="open-default-app-btn"]').click();
     
-    await expect(page.locator('[data-testid="toast-notification"]')).toHaveText(/No default application associated/);
+    await expect(page.locator('[data-testid="toast-notification"]').last()).toHaveText(/No default application associated/);
   });
 
   test('T2_BRIDGE_3: Double-clicking Open in Default App invokes command only once', async ({ page }) => {
@@ -113,7 +113,7 @@ test.describe('BRIDGE: Open in Default App (R10)', () => {
     await page.locator('[data-testid="file-item-denied.md"]').click();
     await page.locator('[data-testid="open-default-app-btn"]').click();
     
-    await expect(page.locator('[data-testid="toast-notification"]')).toHaveText(/Access denied/);
+    await expect(page.locator('[data-testid="toast-notification"]').last()).toHaveText(/Access denied/);
   });
 
   test('T2_BRIDGE_5: Default app button is disabled for unsaved new markdown drafts', async ({ page }) => {

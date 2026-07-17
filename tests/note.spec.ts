@@ -76,10 +76,11 @@ test.describe('NOTE: Markdown Note Editor & File Explorer', () => {
 
   test('T2_NOTE_3: Special Characters and Emojis in Filename', async ({ page }) => {
     const specialName = 'notes_#_@_漢_🚀.md';
+    const sanitizeForTestId = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, '_');
     await page.locator('[data-testid="new-file-name"]').fill(specialName);
     await page.locator('[data-testid="create-file-btn"]').click();
     
-    await expect(page.locator(`[data-testid="file-item-${specialName}"]`)).toBeVisible();
+    await expect(page.locator(`[data-testid="file-item-${sanitizeForTestId(specialName)}"]`)).toBeVisible();
     await expect(page.locator('[data-testid="editor-header-title"]')).toHaveText(specialName);
   });
 

@@ -56,9 +56,10 @@ const Explorer: React.FC = () => {
           vaultFiles.map((file) => {
             const isStl = file.ext.toLowerCase() === 'stl';
             const isDisabled = isStl && !hasCadViewer;
+            const sanitizeForTestId = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, '_');
             const testId = isDisabled
-              ? `file-item-${file.name}-disabled`
-              : `file-item-${file.name}`;
+              ? `file-item-${sanitizeForTestId(file.name)}-disabled`
+              : `file-item-${sanitizeForTestId(file.name)}`;
             const isActive = activeFile?.path === file.path;
 
             return (
