@@ -57,14 +57,14 @@ StudySpace/
 ## Milestones
 | # | Name | Scope | Dependencies | Status | Conversation ID |
 |---|------|-------|-------------|--------|-----------------|
-| 0 | E2E Testing Track | Build opaque-box E2E test suite (Tiers 1-4) | None | `IN_PROGRESS` | 32046b09-6158-443f-bc3a-01608631fa1d |
-| 1 | App Skeleton & Tauri Core | Tauri+React+Vite init, tauri.conf.json fs/http/shell scopes, glassmorphic layout | None | `IN_PROGRESS` | f76a83d9-2e89-4233-afec-b7d28263ca58 |
-| 2 | Markdown Note Editor & File Explorer | Sidebar explorer, split-pane layout, local Markdown read/write | M1 | `PLANNED` | TBD |
-| 3 | CAD, Office, Inline Editor & Native Bridge | R3, R8, R9, R10. Three.js 3D viewer, LibreOffice CLI conversion, C/C++ inline editor, native shell open | M1, M2 | `PLANNED` | TBD |
-| 4 | D2L Calendar Feed Sync | iCal settings, Rust fetch & parse, JSON store, UI calendar display | M1 | `PLANNED` | TBD |
-| 5 | Theme Engine & Feature Toggles | Dynamic swap/persist, feature toggles toggle/persist | M1, M2, M3, M4 | `PLANNED` | TBD |
-| 6 | External File Location Imports | R7 Settings input, dynamic explorer rendering, read/write for external locations | M1, M2, M5 | `PLANNED` | TBD |
-| 7 | Final Integration & E2E Verification | E2E verification pass, white-box adversarial coverage | M0, M1, M2, M3, M4, M5, M6 | `PLANNED` | TBD |
+| 0 | E2E Testing Track | Build opaque-box E2E test suite (Tiers 1-4) | None | `DONE` | 32046b09-6158-443f-bc3a-01608631fa1d |
+| 1 | App Skeleton & Tauri Core | Tauri+React+Vite init, tauri.conf.json fs/http/shell scopes, glassmorphic layout | None | `DONE` | f76a83d9-2e89-4233-afec-b7d28263ca58 |
+| 2 | Markdown Note Editor & File Explorer | Sidebar explorer, split-pane layout, local Markdown read/write | M1 | `DONE` | TBD |
+| 3 | CAD, Office, Inline Editor & Native Bridge | R3, R8, R9, R10. Three.js 3D viewer, LibreOffice CLI conversion, C/C++ inline editor, native shell open | M1, M2 | `DONE` | TBD |
+| 4 | D2L Calendar Feed Sync | iCal settings, Rust fetch & parse, JSON store, UI calendar display | M1 | `DONE` | TBD |
+| 5 | Theme Engine & Feature Toggles | Dynamic swap/persist, feature toggles toggle/persist | M1, M2, M3, M4 | `DONE` | TBD |
+| 6 | External File Location Imports | R7 Settings input, dynamic explorer rendering, read/write for external locations | M1, M2, M5 | `DONE` | TBD |
+| 7 | Final Integration & E2E Verification | E2E verification pass, white-box adversarial coverage | M0, M1, M2, M3, M4, M5, M6 | `IN_PROGRESS` | TBD |
 
 ## Interface Contracts
 ### Tauri commands ↔ React Frontend
@@ -112,4 +112,3 @@ StudySpace/
 - **Description**: Opens the selected file in the host system's default native application.
 - **Input**: `file_path: string`
 - **Output**: `void`
-

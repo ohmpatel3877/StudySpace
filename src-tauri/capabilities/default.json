@@ -3,6 +3,34 @@
   "description": "Default capabilities for StudySpace",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-read",
+      "allow": [
+        { "path": "~/OneDrive/Obsidian/Obsidian-Education/**" },
+        { "path": "$APPDATA/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write",
+      "allow": [
+        { "path": "~/OneDrive/Obsidian/Obsidian-Education/**" },
+        { "path": "$APPDATA/**" }
+      ]
+    },
+    "http:default",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [
+        { "url": "https://*" },
+        { "url": "http://*" }
+      ]
+    },
+    "shell:default",
+    {
+      "identifier": "shell:allow-open",
+      "allow": [{ "name": "open" }]
+    }
   ]
 }
