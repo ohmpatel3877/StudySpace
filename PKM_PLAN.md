@@ -18,8 +18,9 @@ These were answered directly and are not up for re-litigation in later sessions.
 ### Working method
 
 - **Opus 5 orchestrates; Sonnet subagents at low reasoning effort do the fan-out work.** Use the `Workflow` tool for fan-out (its `agent()` accepts `{model:'sonnet', effort:'low'}`); the plain `Agent` tool has no effort parameter.
-- **Prompt caching is automatic on this session with a 1-hour TTL.** There is nothing to configure. The only thing that helps is not churning context — hence one phase per session.
-- **One phase per session by default.** Stop and report at the phase boundary. Commit before moving on.
+- **Prompt caching is automatic, per-conversation, 1-hour TTL.** There is nothing to configure, and subagents do **not** inherit the orchestrator's warm cache — each starts cold. The case for fanning out is parallelism, context isolation, and cheaper per-token workers; it is not cache reuse.
+- **Every fan-out gets an adversarial verifier.** Workers self-report success; a skeptic that neutralizes the worker's own fixture and re-runs is what catches work that is green but vacuous. This caught `T2_THEME_2` in Phase 0, which no amount of worker self-reporting would have.
+- **Continue across phases while context stays healthy; stop when it degrades** — not at a boundary merely because one exists. Degradation signals: re-reading files already read, re-deriving settled conclusions, contradicting earlier findings without new evidence. Commit at each phase boundary regardless, and push, so stopping is always cheap.
 
 ---
 
@@ -84,14 +85,14 @@ with Playwright in `--ui` or `--headed --watch` mode for the inner loop and the 
 
 1. **Get the desktop app to launch at all.** Run `npx tauri dev`, resolve whatever surfaces, and confirm a window renders the React app. Only then does the rest of this phase have meaning. Record the outcome in GATE-BASELINE.md.
 2. Confirm the runtime IPC global in that window (AUDIT Open Question 1 — already settled statically, but confirm empirically now that it is cheap to).
-2. **Delete `safeInvoke`'s hand-rolled shim.** Replace with `invoke()` from `@tauri-apps/api` — already installed, currently unused.
-3. **Delete `handleFallback` (`AppContext.tsx:54-342`), all 288 lines**, including both duplicate implementations and the 11-file fixture vault. The app must fail loudly without a backend rather than silently pretending to work on localStorage.
+3. ~~**Delete `safeInvoke`'s hand-rolled shim.** Replace with `invoke()` from `@tauri-apps/api`.~~ **Done in Phase 0** — the retargeting required fixing both sides of the transport at once, so this landed early (`16911b1`).
+4. **Delete `handleFallback` (`AppContext.tsx:54-342`), all 288 lines**, including both duplicate implementations and the 11-file fixture vault. The app must fail loudly without a backend rather than silently pretending to work on localStorage.
 
    > **`T2_CORE_2` must be rewritten in the same change.** "Missing Tauri Context Fallback" deletes `__TAURI_INTERNALS__` and asserts the app *degrades gracefully* — it is the one test that exercises `handleFallback`. Phase 1 inverts that contract: the app must now fail loudly. Rewrite the assertion to expect the loud failure. Do **not** delete the test, and do not let it silently invert into asserting the opposite of what it is named for.
 
    > **Load-bearing consequence — do not skip.** Playwright drives the app in Chrome, where no Tauri backend exists. Once `handleFallback` is gone, the *only* thing keeping the gate running is `tests/mocks/tauri-ipc-mock.ts` injecting the IPC layer. That mock becomes the **single IPC fake in the repository** and must faithfully implement all 10 commands. This is the correct design — one fake, living in `tests/`, driving real `src/` code — but a future session that deletes 288 lines without understanding this will silently stop the gate from running. If you are reading this in a later session: `tauri-ipc-mock.ts` is not dead code.
-4. Remove shipped test scaffolding from product code: the 800ms artificial delay (`Viewer.tsx:30`), the hardcoded "50%" progress (`Viewer.tsx:85-96`), `window.__triggerWebGLContextLoss` (`CadViewer.tsx:41`).
-5. Fix the state defects in AUDIT Finding 7: functional-update form for `updateSettings`, collapse `theme`/`settings.theme` and `features`/`settings.active_features` to single sources, delete dead `explorerOpen`.
+5. Remove shipped test scaffolding from product code: the 800ms artificial delay (`Viewer.tsx:30`), the hardcoded "50%" progress (`Viewer.tsx:85-96`), `window.__triggerWebGLContextLoss` (`CadViewer.tsx:41`).
+6. Fix the state defects in AUDIT Finding 7: functional-update form for `updateSettings`, collapse `theme`/`settings.theme` and `features`/`settings.active_features` to single sources, delete dead `explorerOpen`.
 
 ### Done condition
 
