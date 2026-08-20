@@ -8,7 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:e2e:mock": "npx playwright test --project=mock-frontend"
+    "test:e2e": "playwright test --project=mock-frontend",
+    "test:e2e:ui": "playwright test --project=mock-frontend --ui",
+    "test:e2e:mock": "npm run test:e2e",
+    "gate": "npm run lint && npm run build && npm run test:e2e && npm run gate:rust",
+    "gate:rust": "cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo check"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

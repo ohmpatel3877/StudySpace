@@ -77,13 +77,15 @@ test.describe('TOGGLE: Modular Feature Toggles', () => {
   });
 
   test('T2_TOGGLE_2: Disk Space Full on Settings Write', async ({ page }) => {
-    // Mock save_settings failure
+    // Make the backend reject the settings write, as a full disk would.
     await page.evaluate(() => {
-      (window as any).__TAURI_IPC__ = async (message: any) => {
-        if (message.cmd === 'save_settings') {
-          return (window as any)[message.error]('Disk Full');
+      const internals = (window as any).__TAURI_INTERNALS__;
+      const passthrough = internals.invoke;
+      internals.invoke = async (cmd: string, args: any) => {
+        if (cmd === 'save_settings') {
+          throw new Error('Disk Full');
         }
-        return (window as any)[message.callback](null);
+        return passthrough(cmd, args);
       };
     });
     

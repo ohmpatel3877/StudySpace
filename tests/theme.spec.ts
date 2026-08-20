@@ -67,20 +67,35 @@ test.describe('THEME: Custom Theme Engine', () => {
   });
 
   test('T2_THEME_2: Theme file configuration Read Failure', async ({ page }) => {
-    // Mock load_settings failure
+    // First persist a NON-default theme. Without this the test is vacuous:
+    // the mock's default is already 'Dark Mode', so asserting theme-dark
+    // passes whether or not load_settings actually fails. Seeding AMOLED
+    // means theme-dark is reachable ONLY via the error fallback.
+    await page.evaluate(() => {
+      (window as any).__MOCK_STATE__.settings.theme = 'AMOLED Mode';
+    });
+    await page.reload();
+    await expect(page.locator('html')).toHaveClass(/theme-amoled/);
+
+    // Now break the config read. Registered after the tauri-ipc-mock fixture's
+    // init script, so __TAURI_INTERNALS__ already exists when this runs.
     await page.addInitScript(() => {
-      (window as any).__TAURI_IPC__ = async (message: any) => {
-        if (message.cmd === 'load_settings') {
-          return (window as any)[message.error]('Failed to read config file');
+      const internals = (window as any).__TAURI_INTERNALS__;
+      const passthrough = internals.invoke;
+      internals.invoke = async (cmd: string, args: any) => {
+        if (cmd === 'load_settings') {
+          throw new Error('Failed to read config file');
         }
-        return (window as any)[message.callback](null);
+        return passthrough(cmd, args);
       };
     });
-    
+
     await page.reload();
-    
-    // Check that it defaulted to Dark Mode class
+
+    // Falls back to Dark Mode rather than surfacing the persisted AMOLED.
+    // If load_settings were succeeding, this would read theme-amoled and fail.
     await expect(page.locator('html')).toHaveClass(/theme-dark/);
+    await expect(page.locator('html')).not.toHaveClass(/theme-amoled/);
   });
 
   test('T2_THEME_3: Rapid-Click Theme Toggle Stress Test', async ({ page }) => {

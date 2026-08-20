@@ -57,12 +57,19 @@ test.describe('CORE: Core Tauri App Architecture', () => {
   });
 
   test('T2_CORE_2: Missing Tauri Context Fallback', async ({ page }) => {
-    // Navigate with a page that has deleted __TAURI_IPC__ mock to trigger fallback
+    // Delete the Tauri 2 boundary before the app boots to simulate a missing backend.
     await page.addInitScript(() => {
-      delete (window as any).__TAURI_IPC__;
+      delete (window as any).__TAURI_INTERNALS__;
+      // Also clear any state the mock or app cached on the prior (backend-present) load,
+      // so this reload genuinely boots with no backend and no cached shortcut.
+      sessionStorage.removeItem('__MOCK_STATE_OVERRIDE__');
+      localStorage.removeItem('studyspace_settings');
     });
     await page.reload();
-    
+
+    // Confirm the boundary is actually gone post-reload, not just no-op deleted.
+    expect(await page.evaluate(() => (window as any).__TAURI_INTERNALS__ === undefined)).toBe(true);
+
     // Fallback load_settings should still function and load default settings
     await expect(page.locator('html')).toHaveClass(/theme-dark/);
     await expect(page.locator('[data-testid="editor-header-title"]')).toHaveText(/welcome.md/);

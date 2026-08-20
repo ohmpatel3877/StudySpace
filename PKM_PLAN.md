@@ -27,8 +27,8 @@ These were answered directly and are not up for re-litigation in later sessions.
 
 | Phase | Name | Status |
 |---|---|---|
-| 0 | Verification gate | `NOT STARTED` |
-| 1 | Reconnect the backend | `NOT STARTED` |
+| 0 | Verification gate | `DONE` — see [GATE-BASELINE.md](GATE-BASELINE.md) |
+| 1 | Reconnect the backend | `PARTIAL` — `safeInvoke` now uses Tauri 2 `invoke()`; `handleFallback` removal outstanding |
 | 2 | Purge and truth pass | `NOT STARTED` |
 | 3 | PKM data core | `NOT STARTED` |
 | 4 | Linking and backlinks | `NOT STARTED` |

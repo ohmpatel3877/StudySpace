@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface FileObject {
   name: string;
@@ -341,41 +342,27 @@ const handleFallback = async (cmd: string, args?: any): Promise<any> => {
   }
 };
 
-export const safeInvoke = (cmd: string, args: any = {}): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    if (typeof window !== 'undefined' && (window as any).__TAURI_IPC__) {
-      const callbackName = 'tauri_cb_' + Math.random().toString(36).substring(2, 15);
-      const errorName = 'tauri_err_' + Math.random().toString(36).substring(2, 15);
+/**
+ * Detects a live Tauri 2 backend.
+ *
+ * Tauri 2 exposes `window.__TAURI_INTERNALS__.invoke`. The previous
+ * implementation probed `window.__TAURI_IPC__` — the Tauri *1* global, which
+ * does not exist in Tauri 2 (verified: the string appears nowhere in
+ * @tauri-apps/api@2). That guard was therefore always falsy in the packaged
+ * desktop app, so every command silently fell through to the localStorage
+ * fallback and the Rust backend was never reached. See AUDIT.md Finding 2.
+ */
+const hasTauriBackend = (): boolean =>
+  typeof window !== 'undefined' &&
+  typeof (window as any).__TAURI_INTERNALS__?.invoke === 'function';
 
-      (window as any)[callbackName] = (res: any) => {
-        delete (window as any)[callbackName];
-        delete (window as any)[errorName];
-        resolve(res);
-      };
-
-      (window as any)[errorName] = (err: any) => {
-        delete (window as any)[callbackName];
-        delete (window as any)[errorName];
-        reject(new Error(err));
-      };
-
-      try {
-        (window as any).__TAURI_IPC__({
-          cmd,
-          callback: callbackName,
-          error: errorName,
-          cmd_args: args,
-          ...args
-        });
-      } catch (e) {
-        delete (window as any)[callbackName];
-        delete (window as any)[errorName];
-        reject(e);
-      }
-    } else {
-      handleFallback(cmd, args).then(resolve).catch(reject);
-    }
-  });
+export const safeInvoke = async (cmd: string, args: any = {}): Promise<any> => {
+  if (hasTauriBackend()) {
+    return invoke(cmd, args);
+  }
+  // No backend: plain-browser dev. Phase 1 removes this path entirely so the
+  // app fails loudly instead of pretending to work on localStorage.
+  return handleFallback(cmd, args);
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

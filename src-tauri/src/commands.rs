@@ -81,11 +81,23 @@ fn walk_dir(dir: &PathBuf, base: &PathBuf) -> Vec<VaultFile> {
         for entry in entries.flatten() {
             let path = entry.path();
             let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
-            let rel = path.strip_prefix(base).unwrap_or(&path).to_string_lossy().to_string();
+            let rel = path
+                .strip_prefix(base)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
             let name = entry.file_name().to_string_lossy().to_string();
-            let ext = path.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_default();
+            let ext = path
+                .extension()
+                .map(|e| e.to_string_lossy().to_string())
+                .unwrap_or_default();
             if !name.starts_with('.') {
-                files.push(VaultFile { name, path: rel, is_dir, ext });
+                files.push(VaultFile {
+                    name,
+                    path: rel,
+                    is_dir,
+                    ext,
+                });
                 if is_dir {
                     files.extend(walk_dir(&path, base));
                 }
@@ -158,7 +170,12 @@ pub fn fetch_and_parse_d2l(url: String) -> Result<Vec<D2LEvent>, String> {
                 }
             }
             if !id.is_empty() {
-                events.push(D2LEvent { id, title, description, due_date });
+                events.push(D2LEvent {
+                    id,
+                    title,
+                    description,
+                    due_date,
+                });
             }
         }
     }
@@ -168,21 +185,28 @@ pub fn fetch_and_parse_d2l(url: String) -> Result<Vec<D2LEvent>, String> {
 #[tauri::command]
 pub fn import_external_location(location_type: String, path_or_url: String) -> Result<(), String> {
     let mut s = app_settings();
-    s.external_locations.push(ExternalLocation { location_type, path_or_url });
+    s.external_locations.push(ExternalLocation {
+        location_type,
+        path_or_url,
+    });
     save_settings(s)
 }
 
 #[tauri::command]
 pub fn remove_external_location(path_or_url: String) -> Result<(), String> {
     let mut s = app_settings();
-    s.external_locations.retain(|l| l.path_or_url != path_or_url);
+    s.external_locations
+        .retain(|l| l.path_or_url != path_or_url);
     save_settings(s)
 }
 
 #[tauri::command]
 pub fn convert_office_doc(file_path: String) -> Result<OfficeConversionResult, String> {
     let full = vault_root().join(&file_path);
-    let pdf_name = format!("{}.pdf", full.file_stem().unwrap_or_default().to_string_lossy());
+    let pdf_name = format!(
+        "{}.pdf",
+        full.file_stem().unwrap_or_default().to_string_lossy()
+    );
     let out_dir = vault_root().join("temp");
     fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
 
@@ -194,7 +218,9 @@ pub fn convert_office_doc(file_path: String) -> Result<OfficeConversionResult, S
         .map_err(|e| format!("LibreOffice not found: {}", e))?;
 
     if status.success() {
-        Ok(OfficeConversionResult { pdf_path: format!("/temp/{}", pdf_name) })
+        Ok(OfficeConversionResult {
+            pdf_path: format!("/temp/{}", pdf_name),
+        })
     } else {
         Err("Conversion failed: File corrupted".to_string())
     }

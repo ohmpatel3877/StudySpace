@@ -63,17 +63,17 @@ test.describe('SYNC: D2L Calendar Feed Sync', () => {
   });
 
   test('T2_SYNC_1: Network Timeout Recovery', async ({ page }) => {
-    // Mock fetch_and_parse_d2l to timeout/throw error
+    // Make the backend time out on this one command. Tauri 2 signals failure
+    // by rejecting the invoke promise; delegate everything else to the real
+    // mock handler so the rest of the app keeps working.
     await page.evaluate(() => {
-      const mockState = (window as any).__MOCK_STATE__;
-      (window as any).__TAURI_IPC__ = async (message: any) => {
-        const { cmd, error } = message;
+      const internals = (window as any).__TAURI_INTERNALS__;
+      const passthrough = internals.invoke;
+      internals.invoke = async (cmd: string, args: any) => {
         if (cmd === 'fetch_and_parse_d2l') {
-          return (window as any)[error]('Timeout fetching iCal feed');
+          throw new Error('Timeout fetching iCal feed');
         }
-        // Fallback for others
-        if (cmd === 'load_settings') return (window as any)[message.callback](mockState.settings);
-        return (window as any)[message.callback](null);
+        return passthrough(cmd, args);
       };
     });
     
@@ -85,16 +85,15 @@ test.describe('SYNC: D2L Calendar Feed Sync', () => {
   });
 
   test('T2_SYNC_2: Invalid/Broken iCal Content Parsing', async ({ page }) => {
-    // Mock IPC feed parsing failure
+    // Make the backend reject with a parse error on this one command.
     await page.evaluate(() => {
-      const mockState = (window as any).__MOCK_STATE__;
-      (window as any).__TAURI_IPC__ = async (message: any) => {
-        const { cmd, error } = message;
+      const internals = (window as any).__TAURI_INTERNALS__;
+      const passthrough = internals.invoke;
+      internals.invoke = async (cmd: string, args: any) => {
         if (cmd === 'fetch_and_parse_d2l') {
-          return (window as any)[error]('Parser error: invalid iCal formatting');
+          throw new Error('Parser error: invalid iCal formatting');
         }
-        if (cmd === 'load_settings') return (window as any)[message.callback](mockState.settings);
-        return (window as any)[message.callback](null);
+        return passthrough(cmd, args);
       };
     });
     

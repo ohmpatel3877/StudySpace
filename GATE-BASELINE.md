@@ -1,0 +1,124 @@
+# Verification Gate — Baseline
+
+**Established:** 2026-08-20 · **Branch:** `audit/pkm-plan` · **Phase 0 of [PKM_PLAN.md](PKM_PLAN.md)**
+
+---
+
+## What changed
+
+The E2E suite previously ran against a hand-written HTML/JS app in `tests/mock-app/` on port 5188 and would have reported 115/115 green with `src/` deleted entirely ([AUDIT.md](AUDIT.md) Finding 1). It now runs against the real React app.
+
+| | Before | After |
+|---|---|---|
+| Target | `tests/mock-app/index.html` (static, 996 LOC of parallel logic) | the real app in `src/`, built to `dist/` |
+| Server | `node tests/mock-app/server.cjs` on :5188 | `vite preview` on :4173, gated behind `npm run build` |
+| IPC transport | `window.__TAURI_IPC__` (**Tauri 1**, absent in Tauri 2) | `window.__TAURI_INTERNALS__.invoke` (**Tauri 2**) |
+| App-side call | hand-rolled callback-global shim | `invoke()` from `@tauri-apps/api/core` |
+| Rust in CI | `cargo check \|\| echo "skipping"` — could not fail | `cargo fmt --check`, `cargo clippy -D warnings`, `cargo check` |
+| Playwright browsers in CI | never installed | `npx playwright install --with-deps chromium` |
+
+## Baseline result
+
+First run of the existing specs against the real app:
+
+```
+112 passed, 3 failed  (24.6s)
+```
+
+**This is far less breakage than expected, and the reason is worth recording:** both implementations were written against the same `data-testid` contract from the original design document, so the majority of assertions transferred unchanged. The mock was a faithful *twin* of the app's happy path — which is precisely why its drift went unnoticed for seven milestones.
+
+### Failure triage
+
+All 3 failures were one category: **stale transport, valid intent.** Each overrode the IPC layer to inject a backend error using the Tauri 1 callback protocol. The intent (verify the app's error handling) was sound; only the transport was dead.
+
+| Test | Was | Now |
+|---|---|---|
+| `T2_SYNC_1` Network Timeout Recovery | overrode `__TAURI_IPC__`, no-op | rejects `fetch_and_parse_d2l` at the invoke boundary — **passes** |
+| `T2_SYNC_2` Invalid iCal Content Parsing | overrode `__TAURI_IPC__`, no-op | rejects with a parse error — **passes** |
+| `T2_TOGGLE_2` Disk Full on Settings Write | overrode `__TAURI_IPC__`, no-op | rejects `save_settings` — **passes** |
+
+Notably, the real app **does** handle all three correctly: it surfaces "Sync failed" and "Failed to persist configurations" as the assertions demanded. No `src/` bug was uncovered by these three; the tests simply could not previously see the behavior they were written to check.
+
+**No test was skipped, weakened, or marked `fixme` to reach green.**
+
+### Silently vacuous tests found
+
+Three further specs still referenced `__TAURI_IPC__` and therefore **passed while testing nothing** — a dead override is worse than a failure, because it reports success. Each was retargeted by a worker and then checked by an independent skeptic that neutralized the override and re-ran, on the principle that a test which passes with its own fixture disabled is still vacuous.
+
+| Spec | Outcome |
+|---|---|
+| `core.spec.ts` | **Load-bearing.** Now deletes `__TAURI_INTERNALS__` in `addInitScript`. Neutralizing it fails `T2_CORE_2` immediately. |
+| `import.spec.ts` | **Load-bearing.** Now wraps `invoke` to fail `load_settings`. Neutralizing it fails `T2_IMPORT_4`. |
+| `theme.spec.ts` | **Caught still-vacuous.** See below. |
+
+`T2_THEME_2` ("Theme file configuration Read Failure") had its transport correctly upgraded, yet **still passed with the override entirely removed.** Root cause: the mock's default `settings.theme` is `'Dark Mode'`, so the assertion "falls back to dark on config-read failure" is indistinguishable from "loaded normally." The test could not tell its own failure path from the happy path.
+
+Fixed by seeding a non-default theme first: persist `'AMOLED Mode'`, assert it applied, *then* break `load_settings` and assert the app falls back to dark and is **not** AMOLED. Re-verified both directions — passes with the override, fails without it.
+
+This is the single most valuable thing the gate caught, because it is the same class of defect as Finding 1 in miniature: a test that reports success while measuring nothing.
+
+### Two more CI defects found during this work
+
+- **The Lint step never passed.** `npx oxlint` exits non-zero because `react/rules-of-hooks` (set to `error`) flags Playwright's `await use(page)` fixture callback as a React hook call. Byte-identical in committed history. Fixed by renaming the fixture parameter to `provide` — Playwright passes it positionally, so no rule suppression was needed.
+- **Playwright browsers were never installed in CI.** No `npx playwright install` step existed, so the E2E job could not have launched a browser at all.
+
+Combined with the `cargo check || echo` swallow, **no CI step that mattered could have passed.** See [AUDIT.md](AUDIT.md) Finding 3.
+
+## Sentinel — proof the gate can fail
+
+The gate being green means nothing unless breaking the app turns it red. Recorded mutation test:
+
+| | |
+|---|---|
+| **Sentinel test** | `T1_NOTE_4: Title/Filename Rendering in Header` (`tests/note.spec.ts:34`) |
+| **Covered line** | `src/components/Editor.tsx:96` — `{currentName}` |
+| **Mutation** | replace with `{"MUTATED_SENTINEL"}` |
+| **Result** | `T1_NOTE_4` and `T2_NOTE_3` flip pass→fail; 8 others still pass |
+| **Reverted** | yes — `git diff` clean, rebuild verified |
+
+The failure is *specific*: one line change breaks exactly the two tests that read that line, not the whole file. That is sensitivity, not noise.
+
+> Deliberately not "the whole gate goes red" — an always-red gate would satisfy that trivially. Sensitivity must be demonstrated per-test.
+
+## Standing self-verification
+
+`tests/gate-sentinel.spec.ts` asserts properties of the **harness**, not the product, so silent detachment fails loudly and first:
+
+- **GATE_1** — the page under test is the real React app: `#root` is populated and a hashed `/assets/` module bundle is loaded. A static mock has neither.
+- **GATE_2** — `src/` crosses the Tauri 2 boundary: `__TAURI_INTERNALS__.invoke` is a function, `__TAURI_IPC__` is `undefined`, and `commandsLog` (appended only inside the mock's invoke handler) contains `load_settings` and `get_vault_files` after boot.
+- **GATE_3** — rendered content comes from backend data: mutating the store and reloading changes what the explorer displays.
+
+All 3 pass.
+
+## Commands
+
+```bash
+npm run gate
+```
+
+Full gate: lint → build → E2E → `cargo fmt`/`clippy`/`check`. Mirrors CI exactly.
+
+**Final state, verified end to end:**
+
+```
+oxlint            exit 0   (was non-zero)
+tsc -b + vite     built
+playwright        118 passed   (115 original + 3 harness self-checks)
+cargo fmt         clean    (formatter applied; had never been enforced)
+cargo clippy -D warnings   clean
+cargo check       clean
+```
+
+The Rust backend does compile. It had simply never been checked in seven milestones.
+
+```bash
+npm run test:e2e:ui
+```
+
+Inner development loop — Playwright UI mode for edit/run/read iteration.
+
+## Known gap
+
+`handleFallback` (`AppContext.tsx:54-342`) still exists, so a plain browser without the injected mock silently runs on localStorage instead of failing. Phase 1 removes it. **When it goes, `tests/mocks/tauri-ipc-mock.ts` becomes the single IPC fake in the repository and is load-bearing for the entire gate** — it is not dead code.
+
+Two layers from the original design document remain unbuilt: a Vitest unit tier and `tauri-driver` binary-mode E2E against the compiled app. Phase 2 decides whether to build them or strike them from the spec.

@@ -118,7 +118,14 @@ Note that `@tauri-apps/api` ships `mocks.js` exporting `mockIPC` — the officia
 
 `|| echo` catches **every** non-zero exit, not only a missing toolchain. A compile error in `commands.rs` produces a green build. The Rust backend has never been compile-checked by CI.
 
-Combined with Findings 1 and 2, the full meaning of a green CI run today is: oxlint passed, TypeScript type-checked, and a hand-written HTML mock behaved as its author intended.
+**Two further CI defects found while building the Phase 0 gate:**
+
+- **The lint step never passed either.** `npx oxlint` exits non-zero on `tests/mocks/tauri-ipc-mock.ts` — oxlint's `react/rules-of-hooks` rule (set to `error` in `.oxlintrc.json`) treats Playwright's fixture callback `await use(page)` as a call to the React `use` hook. This is byte-identical in the committed history, so the Lint step has been failing since the harness was written.
+- **Playwright browsers were never installed in CI.** No `npx playwright install` step exists, so the E2E job could not have launched a browser.
+
+Taken together, the CI workflow could not have produced a green run on any step that mattered. The badge in `README.md` reflects nothing.
+
+So the full meaning of a "green" CI run today is: **nothing.** TypeScript type-checked, and that is all.
 
 ---
 

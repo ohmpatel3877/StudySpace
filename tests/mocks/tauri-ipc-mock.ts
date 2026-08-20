@@ -1,7 +1,11 @@
 import { test as base } from '@playwright/test';
 
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  // The fixture callback's second arg is named `provide`, not Playwright's
+  // conventional `use`: oxlint's react/rules-of-hooks rule treats a bare
+  // `use(...)` call as the React `use` hook and errors. Playwright passes this
+  // argument positionally, so the name is ours to choose.
+  page: async ({ page }, provide) => {
     // Inject Tauri API mock before application boot
     await page.addInitScript(() => {
       const mockVaultFiles = [
@@ -91,7 +95,7 @@ export const test = base.extend({
                 return new Proxy(value, handler);
               }
               return value;
-            } catch (err) {
+            } catch {
               return Reflect.get(target, property);
             }
           },
@@ -112,21 +116,34 @@ export const test = base.extend({
       // Expose to window context – the proxy wraps state so every mutation syncs
       (window as any).__MOCK_STATE__ = makeDeepProxy(state, syncState);
 
-      // Mock Tauri IPC
-      (window as any).__TAURI_IPC__ = async (message: any) => {
-        const { cmd, callback, error, cmd_args } = message;
-        
-        const respond = (data: any) => {
-          if (callback && (window as any)[callback]) {
-            (window as any)[callback](data);
-          }
-          return data;
-        };
+      /**
+       * Tauri 2 IPC mock.
+       *
+       * This is the SINGLE IPC fake in the repository and it is load-bearing:
+       * Playwright drives the real React app in Chrome, where no Tauri backend
+       * exists, so `window.__TAURI_INTERNALS__.invoke` is the only thing that
+       * lets src/ reach a backend at all. Do not delete it as "dead code".
+       *
+       * Shape matches what @tauri-apps/api@2 core.js calls:
+       *   window.__TAURI_INTERNALS__.invoke(cmd, args, options) -> Promise
+       * This is the same contract the official `mockIPC` helper installs; we
+       * set it directly because addInitScript runs before any module loads.
+       *
+       * The previous version implemented the Tauri *1* callback protocol
+       * (`__TAURI_IPC__` with callback/error global names). See AUDIT.md
+       * Finding 2.
+       */
+      const invokeHandler = async (cmd: string, args: any = {}) => {
+        // Tauri 2 passes args as a flat object. The legacy call sites read from
+        // several shapes, so present all of them to keep the handlers unchanged.
+        const message: any = { cmd, cmd_args: args, ...args };
+        const cmd_args = args;
 
+        // In Tauri 2 the invoke() promise IS the result channel: resolve by
+        // returning, reject by throwing. No callback globals involved.
+        const respond = (data: any) => data;
         const reject = (err: any) => {
-          if (error && (window as any)[error]) {
-            (window as any)[error](err);
-          }
+          throw new Error(typeof err === 'string' ? err : String(err));
         };
 
         const activeState = (window as any).__MOCK_STATE__;
@@ -280,12 +297,36 @@ export const test = base.extend({
               return reject(`Unhandled command: ${cmd}`);
           }
         } catch (e: any) {
-          return reject(e.message);
+          // Preserve rejections thrown by reject() above; wrap anything else.
+          throw e instanceof Error ? e : new Error(e?.message ?? String(e));
         }
+      };
+
+      // Minimal Tauri 2 internals surface. `invoke` is what @tauri-apps/api
+      // core.js delegates to; the other two are present because parts of the
+      // API surface reference them and their absence throws on import.
+      let callbackId = 0;
+      (window as any).__TAURI_INTERNALS__ = {
+        invoke: invokeHandler,
+        transformCallback: (cb: any, once = false) => {
+          const id = ++callbackId;
+          const prop = `_${id}`;
+          Object.defineProperty(window, prop, {
+            value: (result: any) => {
+              if (once) Reflect.deleteProperty(window, prop);
+              return cb?.(result);
+            },
+            writable: false,
+            configurable: true,
+          });
+          return id;
+        },
+        convertFileSrc: (filePath: string, protocol = 'asset') =>
+          `http://${protocol}.localhost/${encodeURIComponent(filePath)}`,
       };
 
       (window as any).__MOCK_TAURI_ACTIVE__ = true;
     });
-    await use(page);
+    await provide(page);
   }
 });
