@@ -64,6 +64,36 @@ This is the single most valuable thing the gate caught, because it is the same c
 
 Combined with the `cargo check || echo` swallow, **no CI step that mattered could have passed.** See [AUDIT.md](AUDIT.md) Finding 3.
 
+## What this gate still does NOT verify
+
+**Read this before trusting "118 passed."** The gate did not eliminate the fiction boundary — it moved it one layer down.
+
+| | Before Phase 0 | After Phase 0 |
+|---|---|---|
+| Fiction boundary | mock **app** vs. real app | mock **backend** vs. real Rust |
+
+`tests/mocks/tauri-ipc-mock.ts` is a hand-written contract stub. **Nothing in this repo verifies it matches the real command signatures in `commands.rs`.** `GATE_2` proves `src/` calls `invoke`; it does not prove the mock's responses resemble what Rust actually returns.
+
+### Tests that are green while asserting stub behavior
+
+These pass today and would **fail against the real backend, or assert nothing at all.** They were not caught by the retargeting triage because they never failed — someone had already softened them to match the fake.
+
+| Test | Why it is fiction | Made real in |
+|---|---|---|
+| `T1_VIEW_2` PDF Viewer Embedding | Asserts `src` matches `/base64\|MOCK/` — the regex was **widened to accept the mock's sentinel string**. The real `read_vault_file` is `fs::read_to_string` ([commands.rs:121](src-tauri/src/commands.rs:121)) and errors on any non-UTF8 file, so this green test covers a load path that is known broken. | Phase 3 (binary read) + Phase 7 |
+| `T1_VIEW_4` Three.js Viewport Init | Asserts `[data-testid="three-canvas"]` is visible and status reads `WebGL Context Active`. `three-canvas` is a `<div>` ([CadViewer.tsx:78](src/components/CadViewer.tsx:78)); the status is a hardcoded ternary ([CadViewer.tsx:52](src/components/CadViewer.tsx:52)). No WebGL exists. | Phase 7 |
+| `T1_VIEW_5` 3D Camera Controls | Dispatches a `wheel` event, then asserts a status string **that the wheel event cannot change**. Passes whether or not the handler exists. | Phase 7 |
+| `T2_VIEW_5` WebGL Context Loss | Drives `window.__triggerWebGLContextLoss()` — a test-only hook shipped inside production code ([CadViewer.tsx:41](src/components/CadViewer.tsx:41)) — and asserts its fake 1s recovery. | Phase 7 |
+| Office conversion specs | Assert against `/temp/...` paths the mock invents. The real `convert_office_doc` returns a leading-slash path that re-resolves to `C:\temp\` and cannot be read back ([commands.rs:197](src-tauri/src/commands.rs:197)). | Phase 7 |
+
+The original design document demanded better: `T1_VIEW_4` was specified as "a `<canvas>` element with Three.js rendering engine initialized" and `T2_VIEW_5` as dispatching a real `webglcontextlost` event. The assertions were weakened to match what got built.
+
+**These are deliberately left green rather than marked `fixme`.** Marking them would remove the pressure to build the feature and quietly shrink the suite. They are listed here instead, each bound to the phase that makes them real. Phase 7 must rewrite the assertion *and* the implementation together.
+
+### The only current check on mock/Rust divergence is manual
+
+Running `npx tauri dev` and exercising the app by hand. The automated version is the `tauri-driver` binary mode the original design specified and which was never built (`tests/mocks/tauri-driver/` was a `module.exports = {}` stub). Until that exists, **the gate verifies the frontend against a contract nobody validates.**
+
 ## Sentinel — proof the gate can fail
 
 The gate being green means nothing unless breaking the app turns it red. Recorded mutation test:
@@ -116,6 +146,13 @@ npm run test:e2e:ui
 ```
 
 Inner development loop — Playwright UI mode for edit/run/read iteration.
+
+## Incidental changes in the Phase 0 commit
+
+Disclosed here because the commit message is about the test harness and these are unrelated to it:
+
+- **`cargo fmt` was applied**, not just checked. `src-tauri/src/commands.rs` and `src-tauri/build.rs` are reformatted. The formatter had never been enforced, so `--check` failed on first run. Formatter-only, no semantic change — but Phase 9's security diffs will sit on top of reformatted code.
+- **`src-tauri/gen/schemas/*.json` were regenerated** as a side effect of running `cargo check` for the first time.
 
 ## Known gap
 
