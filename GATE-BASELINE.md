@@ -147,6 +147,38 @@ npm run test:e2e:ui
 
 Inner development loop — Playwright UI mode for edit/run/read iteration.
 
+## First desktop launch — 2026-08-20
+
+`npx tauri dev` had never been run on this machine. Recorded here because it is the empirical counterpart to everything above.
+
+**Attempt 1 — failed.** Rust compiled to 440/441 and linked successfully; **Vite** died:
+
+```
+Error: EBUSY: resource busy or locked, watch
+'...\src-tauri\target\debug\deps\studyspace.exe'
+    Error The "beforeDevCommand" terminated with a non-zero status code.
+```
+
+`vite.config.ts` was the bare template and lacked `server.watch.ignored: ['**/src-tauri/**']`, which the stock Tauri scaffold ships. Vite's watcher walked into `src-tauri/target/` and hit the binary while cargo was still writing it. See [AUDIT.md](AUDIT.md) Finding 8. Fixed, along with `strictPort` and `clearScreen: false`.
+
+**Attempt 2 — the app launched.** `Running target\debug\studyspace.exe`, window rendered, process alive.
+
+### What the first launch immediately revealed
+
+| Observation | Meaning |
+|---|---|
+| `%APPDATA%\studyspace\` was created on boot | `settings_path()` and its `create_dir_all` ran — **the Rust backend is genuinely being reached.** |
+| `settings.json` absent | Expected: only `load_settings` ran, and it returns `AppSettings::default()` on miss without writing. Writing requires a `save_settings`, i.e. a UI interaction. |
+| `Failed to load file contents ... (os error 3)` | The absolute-path-override defect, live. See AUDIT Finding 4 "Confirmed live". |
+
+That error is itself the proof the Phase 0 IPC fix landed: under the old Tauri 1 shim the same call would have silently returned fixture data from localStorage and displayed a fake `welcome.md`. **Getting a real error was the win.**
+
+### Phase 1 done-condition: partially met
+
+Met: the desktop app launches, and the Rust backend is demonstrably reached (directory creation on boot).
+
+Not yet met: `settings.json` has not been observed being written, because that needs a click in a native window. Closing this fully needs either a manual pass or the `tauri-driver` binary-mode E2E the original design specified and nobody built — which remains the only automated way to catch mock/Rust divergence.
+
 ## Incidental changes in the Phase 0 commit
 
 Disclosed here because the commit message is about the test harness and these are unrelated to it:

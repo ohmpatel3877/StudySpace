@@ -144,6 +144,25 @@ The vault root is **never enforced**. `vault_root()` (`commands.rs:44-47`) retur
 | `http:allow-fetch` permits `http://*`, not just `https://*` | `capabilities/default.json` | a copy-pasted `http://` feed URL leaks its token in cleartext |
 | `csp: null` | `tauri.conf.json:21` | no CSP; relevant because iCal `DESCRIPTION` fields reach the UI |
 
+### Confirmed live, 2026-08-20
+
+The absolute-path-override defect was observed in the running desktop app on its first-ever launch. On boot the console showed:
+
+```
+Failed to load file contents The system cannot find the path specified. (os error 3)
+```
+
+Chain:
+
+1. `Editor.tsx:15` defaults `currentPath` to `'/vault/welcome.md'` — a **localStorage-fixture path hardcoded into production code**, one of the 11 fake files seeded by `handleFallback`.
+2. The real backend runs `vault_root().join("/vault/welcome.md")`.
+3. On Windows, `PathBuf::join` with a leading-slash argument **discards the base entirely** → the path resolves to `C:\vault\welcome.md`.
+4. That file does not exist → `os error 3`.
+
+The failure is benign in this direction — a read that misses. But it is the **same mechanism** that makes `write_vault_file` an arbitrary-write primitive, and it has now been demonstrated rather than merely inferred. The real vault (`~/OneDrive/Obsidian/Obsidian-Education`, containing `Sem 1/…`) uses relative paths from `get_vault_files` and joins correctly, which is why the defect stayed latent.
+
+Two things this proves at once: the vault-root guard is genuinely absent, and the Tauri 2 IPC fix works — under the old v1 shim this call would have silently returned fixture data from localStorage and shown a fake `welcome.md` instead of an error.
+
 **Capabilities do not mitigate any of this.** In Tauri 2 the ACL system gates *plugin* commands only. All 10 commands here are custom `#[tauri::command]` functions registered via `generate_handler!` (`main.rs:10-21`) — they are callable from the webview regardless of `capabilities/default.json`. The `fs:allow-read`/`fs:allow-write` scoping to the vault is **decorative** with respect to the actual I/O, which happens through unscoped `std::fs` calls inside `commands.rs`.
 
 Separately: `tauri-plugin-fs`, `tauri-plugin-http`, and `tauri-plugin-shell` are registered and `init()`'d (`main.rs:7-9`), granted broad default permissions, and **used by nothing** — no `@tauri-apps/plugin-*` import exists in `src/`. They are pure added attack surface.
@@ -201,6 +220,43 @@ TS integration risk: `KnowledgeGraph.tsx:2` imports from `'../graph/academy-grap
 | `reqwest::blocking` inside a Tauri command, with `panic = "abort"` in `Cargo.toml:25` — a "runtime within a runtime" panic aborts the whole process rather than returning `Err`. | `commands.rs:137` |
 
 ---
+
+## Finding 8 — The desktop app could not start, and nobody knew
+
+**Severity: critical. Found by running `npx tauri dev` for the first time in the project's history.**
+
+`vite.config.ts` was the bare Vite template:
+
+```ts
+export default defineConfig({
+  plugins: [react()],
+})
+```
+
+It was never given the Tauri integration settings the stock scaffold ships. Consequence: Vite's file watcher walks into `src-tauri/target/`, and the moment cargo links the output binary the watcher hits a locked file and throws:
+
+```
+Error: EBUSY: resource busy or locked, watch
+'...\src-tauri\target\debug\deps\studyspace.exe'
+    Error The "beforeDevCommand" terminated with a non-zero status code.
+```
+
+The Rust build itself **succeeded** — it reached 440/441 and linked. The dev server died underneath it, taking `tauri dev` down. Fixed by adding `server.watch.ignored: ['**/src-tauri/**']`, plus `strictPort` (so a port collision fails loudly rather than Tauri loading a blank window from the wrong origin) and `clearScreen: false` (so cargo's errors are not wiped from the terminal).
+
+### Why this finding reframes the whole audit
+
+Confirmed with the project owner: **`npx tauri dev` had never been run on this machine.** All seven milestones were developed and "verified" browser-only through `npm run dev`.
+
+That single fact is the common cause behind most of what this document reports as separate defects:
+
+| Finding | Explained by |
+|---|---|
+| 1 — tests target a mock app | Browser-only workflow made a browser-only test target feel natural |
+| 2 — Tauri 1 IPC in a Tauri 2 app | The v1 shim works fine in a browser, where it simply falls through to localStorage |
+| 5 — stubs marked `DONE` | Features were validated against the localStorage fallback, which always agreed |
+| 8 — app cannot launch | The one defect that *only* manifests in the desktop app, so it was invisible |
+
+These are not seven independent mistakes. They are **one methodological gap with seven symptoms:** the desktop application was never the artifact being built, so nothing that only manifests in the desktop application was ever observed. Every remediation phase should be read with that in mind — the fix is not just correcting each defect but closing the gap that let all of them persist, which is what Phase 0's gate and the still-unbuilt `tauri-driver` binary mode are for.
 
 ## Dead file inventory
 
