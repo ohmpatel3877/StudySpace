@@ -12,25 +12,41 @@ const Editor: React.FC = () => {
 
   const [isPreview, setIsPreview] = useState(false);
 
-  const currentPath = activeFile ? activeFile.path : '/vault/welcome.md';
-  const currentName = activeFile ? activeFile.name : 'welcome.md';
-  const currentExt = activeFile ? activeFile.ext : 'md';
+  // No file open means exactly that. These were previously defaulted to
+  // '/vault/welcome.md' — a fixture path from the deleted localStorage
+  // fallback, hardcoded into production code. Against the real backend that
+  // resolved to C:\vault\welcome.md (PathBuf::join discards the base on a
+  // leading-slash arg) and produced `os error 3` on every single boot.
+  // See AUDIT.md Finding 4, "Confirmed live".
+  const currentPath = activeFile?.path ?? null;
+  const currentName = activeFile?.name ?? null;
+  const currentExt = activeFile?.ext ?? null;
+
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Load content
   useEffect(() => {
+    if (!currentPath) {
+      setEditorContent('');
+      setLoadError(null);
+      return;
+    }
     const loadContent = async () => {
       try {
         const data = await safeInvoke('read_vault_file', { path: currentPath });
         setEditorContent(data || '');
-      } catch (err) {
+        setLoadError(null);
+      } catch (err: any) {
         console.error('Failed to load file contents', err);
         setEditorContent('');
+        setLoadError(err?.message ?? 'Failed to load file contents');
       }
     };
     loadContent();
   }, [activeFile, currentPath, setEditorContent]);
 
   const handleSave = async () => {
+    if (!currentPath) return;
     try {
       await safeInvoke('write_vault_file', { path: currentPath, content: editorContent });
       showToast('File saved successfully');
@@ -46,6 +62,7 @@ const Editor: React.FC = () => {
   };
 
   const handleOpenDefaultApp = async () => {
+    if (!currentPath) return;
     try {
       await safeInvoke('open_in_default_app', { file_path: currentPath });
       showToast(`Opening ${currentName} in default application`);
@@ -93,7 +110,7 @@ const Editor: React.FC = () => {
       {/* Editor Header */}
       <div className="p-3 border-b border-slate-800 flex items-center justify-between">
         <h2 data-testid="editor-header-title" className="text-sm font-semibold truncate max-w-xs">
-          {currentName}
+          {currentName ?? 'No file open'}
         </h2>
         <div className="flex items-center space-x-2">
           <button
@@ -105,8 +122,9 @@ const Editor: React.FC = () => {
           </button>
           <button
             data-testid="save-button"
+            disabled={!currentPath}
             onClick={handleSave}
-            className="px-2.5 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+            className="px-2.5 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded transition"
           >
             Save
           </button>
@@ -123,7 +141,23 @@ const Editor: React.FC = () => {
 
       {/* Editor Body */}
       <div className="flex-1 overflow-auto p-4">
-        {isPreview ? (
+        {!currentPath ? (
+          <div
+            data-testid="editor-empty-state"
+            className="h-full flex flex-col items-center justify-center text-center text-slate-500 select-none"
+          >
+            <p className="text-sm font-medium text-slate-400">No file open</p>
+            <p className="text-xs mt-1">Choose a file from the explorer to start editing.</p>
+          </div>
+        ) : loadError ? (
+          <div
+            data-testid="editor-load-error"
+            className="h-full flex flex-col items-center justify-center text-center px-6"
+          >
+            <p className="text-sm font-medium text-red-400">Could not open {currentName}</p>
+            <p className="text-xs mt-1 text-slate-500 max-w-md break-words">{loadError}</p>
+          </div>
+        ) : isPreview ? (
           <div
             data-testid="markdown-preview"
             className="prose prose-invert max-w-none text-slate-300"
