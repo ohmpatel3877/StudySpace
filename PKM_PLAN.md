@@ -80,7 +80,10 @@ with Playwright in `--ui` or `--headed --watch` mode for the inner loop and the 
 
 **Blocked by:** Phase 0 (otherwise there is no way to know if it worked).
 
-1. Confirm the runtime IPC global under `npx tauri dev` (AUDIT Open Question 1).
+> **Confirmed 2026-08-20: `npx tauri dev` has never been run on this machine.** Every milestone to date was developed and "verified" browser-only via `npm run dev`. This is the root cause behind Findings 1, 2 and 5 as a group — the desktop app was never the thing being built, so nothing that only manifests in the desktop app was ever seen. Phase 1 therefore starts one step earlier than originally written.
+
+1. **Get the desktop app to launch at all.** Run `npx tauri dev`, resolve whatever surfaces, and confirm a window renders the React app. Only then does the rest of this phase have meaning. Record the outcome in GATE-BASELINE.md.
+2. Confirm the runtime IPC global in that window (AUDIT Open Question 1 — already settled statically, but confirm empirically now that it is cheap to).
 2. **Delete `safeInvoke`'s hand-rolled shim.** Replace with `invoke()` from `@tauri-apps/api` — already installed, currently unused.
 3. **Delete `handleFallback` (`AppContext.tsx:54-342`), all 288 lines**, including both duplicate implementations and the 11-file fixture vault. The app must fail loudly without a backend rather than silently pretending to work on localStorage.
 
