@@ -79,6 +79,20 @@ If the scope proves too large, the fallback is D5's other branch — skills driv
 
 ---
 
+## Next session starts here
+
+State as of `579ee45` on `audit/pkm-plan`, pushed. `npm run gate` green on HEAD: oxlint 0, build ok, 118 E2E passed, cargo fmt/clippy/check clean.
+
+1. **`npm run gate`** first, to confirm the tree is still green before touching anything.
+2. **Finish Phase 1's last two items:** the shipped scaffolding in `Viewer.tsx` (800ms artificial delay, hardcoded "50%" progress) and `CadViewer.tsx:41`'s `window.__triggerWebGLContextLoss`.
+   > **Trap — decide deliberately.** Removing the WebGL hook breaks `T2_VIEW_5`, which is on the certified-fiction list in [GATE-BASELINE.md](GATE-BASELINE.md). The standing rule is *don't mark fiction as `fixme`*, because that removes the pressure to build the feature. So either the hook stays until Phase 11 builds real WebGL, or `T2_VIEW_5` is deleted outright with a note pointing at Phase 11. Do not let it get quietly softened a second time — that is exactly how it got here.
+3. **AUDIT Finding 7's state defects:** functional-update form for `updateSettings`, collapse the duplicated `theme`/`features` state, delete dead `explorerOpen`.
+4. **Phase 2's dead-file purge** — `.agents/**` archived out of the repo, not deleted; `study_space.html` mined for its note taxonomy first.
+
+### A lesson worth carrying, before deleting anything as "demo-ware"
+
+The D3 reversal happened because a file was judged against the wrong test. `academy-data.js` looked like fictional filler; it was an **unlabeled prototype of a specification that had not been written down yet.** Before deleting anything here as demo-ware, ask whether it is a prototype of something not yet specified. `study_space.html` is the remaining candidate — hence mine-then-delete, not delete.
+
 ## Phase status
 
 | Phase | Name | Status |
