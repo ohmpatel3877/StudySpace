@@ -84,7 +84,7 @@ If the scope proves too large, the fallback is D5's other branch — skills driv
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Verification gate | `DONE` — [GATE-BASELINE.md](GATE-BASELINE.md) |
-| 1 | Reconnect the backend | `PARTIAL` — app launches, backend reached; `handleFallback` outstanding |
+| 1 | Reconnect the backend | `PARTIAL` — fallback deleted, app fails loudly; scaffolding + state defects outstanding |
 | 2 | Purge and truth pass | `PARTIAL` — docs done (`8cae4e3`); dead-file purge outstanding |
 | 3 | The `~/pkm/` store | `NOT STARTED` |
 | 4 | Stub system | `NOT STARTED` |

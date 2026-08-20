@@ -80,15 +80,15 @@ These pass today and would **fail against the real backend, or assert nothing at
 
 | Test | Why it is fiction | Made real in |
 |---|---|---|
-| `T1_VIEW_2` PDF Viewer Embedding | Asserts `src` matches `/base64\|MOCK/` — the regex was **widened to accept the mock's sentinel string**. The real `read_vault_file` is `fs::read_to_string` ([commands.rs:121](src-tauri/src/commands.rs:121)) and errors on any non-UTF8 file, so this green test covers a load path that is known broken. | Phase 3 (binary read) + Phase 7 |
-| `T1_VIEW_4` Three.js Viewport Init | Asserts `[data-testid="three-canvas"]` is visible and status reads `WebGL Context Active`. `three-canvas` is a `<div>` ([CadViewer.tsx:78](src/components/CadViewer.tsx:78)); the status is a hardcoded ternary ([CadViewer.tsx:52](src/components/CadViewer.tsx:52)). No WebGL exists. | Phase 7 |
-| `T1_VIEW_5` 3D Camera Controls | Dispatches a `wheel` event, then asserts a status string **that the wheel event cannot change**. Passes whether or not the handler exists. | Phase 7 |
-| `T2_VIEW_5` WebGL Context Loss | Drives `window.__triggerWebGLContextLoss()` — a test-only hook shipped inside production code ([CadViewer.tsx:41](src/components/CadViewer.tsx:41)) — and asserts its fake 1s recovery. | Phase 7 |
-| Office conversion specs | Assert against `/temp/...` paths the mock invents. The real `convert_office_doc` returns a leading-slash path that re-resolves to `C:\temp\` and cannot be read back ([commands.rs:197](src-tauri/src/commands.rs:197)). | Phase 7 |
+| `T1_VIEW_2` PDF Viewer Embedding | Asserts `src` matches `/base64\|MOCK/` — the regex was **widened to accept the mock's sentinel string**. The real `read_vault_file` is `fs::read_to_string` ([commands.rs:121](src-tauri/src/commands.rs:121)) and errors on any non-UTF8 file, so this green test covers a load path that is known broken. | Phase 3 (binary read) + Phase 11 |
+| `T1_VIEW_4` Three.js Viewport Init | Asserts `[data-testid="three-canvas"]` is visible and status reads `WebGL Context Active`. `three-canvas` is a `<div>` ([CadViewer.tsx:78](src/components/CadViewer.tsx:78)); the status is a hardcoded ternary ([CadViewer.tsx:52](src/components/CadViewer.tsx:52)). No WebGL exists. | Phase 11 |
+| `T1_VIEW_5` 3D Camera Controls | Dispatches a `wheel` event, then asserts a status string **that the wheel event cannot change**. Passes whether or not the handler exists. | Phase 11 |
+| `T2_VIEW_5` WebGL Context Loss | Drives `window.__triggerWebGLContextLoss()` — a test-only hook shipped inside production code ([CadViewer.tsx:41](src/components/CadViewer.tsx:41)) — and asserts its fake 1s recovery. | Phase 11 |
+| Office conversion specs | Assert against `/temp/...` paths the mock invents. The real `convert_office_doc` returns a leading-slash path that re-resolves to `C:\temp\` and cannot be read back ([commands.rs:197](src-tauri/src/commands.rs:197)). | Phase 11 |
 
 The original design document demanded better: `T1_VIEW_4` was specified as "a `<canvas>` element with Three.js rendering engine initialized" and `T2_VIEW_5` as dispatching a real `webglcontextlost` event. The assertions were weakened to match what got built.
 
-**These are deliberately left green rather than marked `fixme`.** Marking them would remove the pressure to build the feature and quietly shrink the suite. They are listed here instead, each bound to the phase that makes them real. Phase 7 must rewrite the assertion *and* the implementation together.
+**These are deliberately left green rather than marked `fixme`.** Marking them would remove the pressure to build the feature and quietly shrink the suite. They are listed here instead, each bound to the phase that makes them real. Phase 11 must rewrite the assertion *and* the implementation together.
 
 ### The only current check on mock/Rust divergence is manual
 
@@ -173,24 +173,31 @@ Error: EBUSY: resource busy or locked, watch
 
 That error is itself the proof the Phase 0 IPC fix landed: under the old Tauri 1 shim the same call would have silently returned fixture data from localStorage and displayed a fake `welcome.md`. **Getting a real error was the win.**
 
-### Phase 1 done-condition: NOT MET — two of six steps landed
+### Second desktop launch, after the fallback removal
+
+Re-ran `npx tauri dev` after deleting `handleFallback` and replacing the editor's fixture-path default with a real empty state (`eb003e8`).
+
+**The boot-time `Failed to load file contents ... (os error 3)` no longer appears.** It previously fired within seconds of every launch. The app ran until deliberately terminated (exit 143 = SIGTERM from a timeout; the `Chrome_WidgetWin_0` unregister line is benign Windows teardown noise).
+
+That confirms the fix in the real desktop app, not only under Playwright.
+
+### Phase 1 done-condition: NOT MET — four of six steps landed
 
 Done-conditions in [PKM_PLAN.md](PKM_PLAN.md) are binary by design. This one reads unmet until it is met.
 
-**Landed:** the desktop app launches (step 1), and `settings_path()`'s `create_dir_all` demonstrably executed (step 2, partial evidence for the IPC path).
+**Landed:** the desktop app launches; `settings_path()`'s `create_dir_all` demonstrably executed; `handleFallback` deleted (291 lines) so `safeInvoke` throws `NoBackendError` when no backend is present; the editor's fixture-path default replaced with a real empty state, confirmed by the disappearance of the boot-time `os error 3`; `T2_CORE_2` inverted to the new contract and verified load-bearing.
 
 **Outstanding:**
 
 - `settings.json` has never been observed being written. Needs a click in a native window — so a manual pass, or the `tauri-driver` binary mode the original design specified and nobody built.
-- `handleFallback` is still in place. Until it is gone, "the backend was reached" cannot be distinguished from "the backend was reached for `settings_path()` and fell back elsewhere." The directory-creation evidence is real but narrow.
-- `T2_CORE_2` still asserts the old graceful-degradation contract.
-- `Editor.tsx:15`'s `/vault/welcome.md` default is now a **live bug**, not dormant scaffolding — it produces `os error 3` on every boot. It needs a real empty state, not a fixture path.
+- Remaining shipped test scaffolding in product code: the 800ms artificial delay (`Viewer.tsx:30`), the hardcoded "50%" progress (`Viewer.tsx:85-96`), `window.__triggerWebGLContextLoss` (`CadViewer.tsx:41`).
+- The state defects in AUDIT Finding 7: functional-update form for `updateSettings`, the duplicated `theme`/`features` state, dead `explorerOpen`.
 
 ## Incidental changes in the Phase 0 commit
 
 Disclosed here because the commit message is about the test harness and these are unrelated to it:
 
-- **`cargo fmt` was applied**, not just checked. `src-tauri/src/commands.rs` and `src-tauri/build.rs` are reformatted. The formatter had never been enforced, so `--check` failed on first run. Formatter-only, no semantic change — but Phase 9's security diffs will sit on top of reformatted code.
+- **`cargo fmt` was applied**, not just checked. `src-tauri/src/commands.rs` and `src-tauri/build.rs` are reformatted. The formatter had never been enforced, so `--check` failed on first run. Formatter-only, no semantic change — but Phase 13's security diffs will sit on top of reformatted code.
 - **`src-tauri/gen/schemas/*.json` were regenerated** as a side effect of running `cargo check` for the first time.
 
 ## Known gap
