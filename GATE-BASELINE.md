@@ -173,11 +173,18 @@ Error: EBUSY: resource busy or locked, watch
 
 That error is itself the proof the Phase 0 IPC fix landed: under the old Tauri 1 shim the same call would have silently returned fixture data from localStorage and displayed a fake `welcome.md`. **Getting a real error was the win.**
 
-### Phase 1 done-condition: partially met
+### Phase 1 done-condition: NOT MET — two of six steps landed
 
-Met: the desktop app launches, and the Rust backend is demonstrably reached (directory creation on boot).
+Done-conditions in [PKM_PLAN.md](PKM_PLAN.md) are binary by design. This one reads unmet until it is met.
 
-Not yet met: `settings.json` has not been observed being written, because that needs a click in a native window. Closing this fully needs either a manual pass or the `tauri-driver` binary-mode E2E the original design specified and nobody built — which remains the only automated way to catch mock/Rust divergence.
+**Landed:** the desktop app launches (step 1), and `settings_path()`'s `create_dir_all` demonstrably executed (step 2, partial evidence for the IPC path).
+
+**Outstanding:**
+
+- `settings.json` has never been observed being written. Needs a click in a native window — so a manual pass, or the `tauri-driver` binary mode the original design specified and nobody built.
+- `handleFallback` is still in place. Until it is gone, "the backend was reached" cannot be distinguished from "the backend was reached for `settings_path()` and fell back elsewhere." The directory-creation evidence is real but narrow.
+- `T2_CORE_2` still asserts the old graceful-degradation contract.
+- `Editor.tsx:15`'s `/vault/welcome.md` default is now a **live bug**, not dormant scaffolding — it produces `os error 3` on every boot. It needs a real empty state, not a fixture path.
 
 ## Incidental changes in the Phase 0 commit
 

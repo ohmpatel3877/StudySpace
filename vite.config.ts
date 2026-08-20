@@ -31,4 +31,14 @@ export default defineConfig({
       ignored: ['**/src-tauri/**'],
     },
   },
+
+  // Declared explicitly rather than inherited. Vite's `preview` block falls
+  // back to `server` when absent, so `strictPort: true` above would carry
+  // over and the gate's port would be coupled to the dev server's. Playwright
+  // serves dist/ from here (playwright.config.ts), so the two must be
+  // independent — a future edit to `server.port` must not move the gate.
+  preview: {
+    port: 4173,
+    strictPort: true,
+  },
 })
