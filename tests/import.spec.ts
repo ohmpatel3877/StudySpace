@@ -114,25 +114,38 @@ test.describe('IMPORT: External Location Imports (R7)', () => {
   });
 
   test('T2_IMPORT_4: Storage read failure fallback defaults to empty list', async ({ page }) => {
+    // Seed a real external location first, so the default (non-override) path
+    // would render a non-empty list. This makes the assertion below actually
+    // discriminate between "override applied" and "override dead".
+    await page.locator('[data-testid="tab-settings"]').click();
+    await page.locator('[data-testid="import-type-select"]').selectOption('local');
+    await page.locator('[data-testid="import-path-input"]').fill('/ext/my_local_folder');
+    await page.locator('[data-testid="import-submit-btn"]').click();
+    await expect(page.locator('[data-testid="imported-locations-list"]')).toContainText('/ext/my_local_folder');
+
     // Mock settings load to return without external_locations key
-    await page.evaluate(() => {
-      (window as any).__TAURI_IPC__ = async (message: any) => {
-        if (message.cmd === 'load_settings') {
-          return (window as any)[message.callback]({
+    await page.addInitScript(() => {
+      const internals = (window as any).__TAURI_INTERNALS__;
+      const passthrough = internals.invoke;
+      internals.invoke = async (cmd: string, args: any) => {
+        if (cmd === 'load_settings') {
+          return {
             theme: 'Dark Mode',
             active_features: ['d2l_sync', 'cad_viewer'],
             d2l_feed_url: 'https://d2l.myuniversity.edu/feed.ics'
             // missing external_locations
-          });
+          };
         }
-        return (window as any)[message.callback](null);
+        return passthrough(cmd, args);
       };
     });
-    
+
     await page.reload();
     await page.locator('[data-testid="tab-settings"]').click();
-    
-    // Verify no crash and lists empty locations indicator
+
+    // Verify no crash and lists empty locations indicator, proving the
+    // overridden load_settings response (missing external_locations) was
+    // actually used instead of the seeded location persisted in mock state.
     await expect(page.locator('[data-testid="imported-locations-list"]')).toContainText('No external locations imported');
   });
 

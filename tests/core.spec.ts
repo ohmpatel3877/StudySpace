@@ -56,16 +56,50 @@ test.describe('CORE: Core Tauri App Architecture', () => {
     await expect(page.locator('[data-testid="editor-pane"]')).toBeVisible();
   });
 
-  test('T2_CORE_2: Missing Tauri Context Fallback', async ({ page }) => {
-    // Navigate with a page that has deleted __TAURI_IPC__ mock to trigger fallback
+  test('T2_CORE_2: Missing Tauri Context Fails Loudly', async ({ page }) => {
+    // CONTRACT INVERTED in Phase 1. This test previously asserted that a
+    // missing backend degraded *gracefully* into a localStorage fallback that
+    // served fixture data. That fallback (~290 lines) is what let six
+    // milestones ship against fiction: the app looked fully functional in a
+    // browser while the Rust backend was never reached at all.
+    // See AUDIT.md Findings 2 and 5.
+    //
+    // The contract is now the opposite: with no backend, the app must NOT
+    // fabricate content. It surfaces nothing rather than something false.
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+
     await page.addInitScript(() => {
-      delete (window as any).__TAURI_IPC__;
+      delete (window as any).__TAURI_INTERNALS__;
+      // Clear anything cached on the prior backend-present load so this reload
+      // genuinely boots with no backend and no shortcut.
+      sessionStorage.removeItem('__MOCK_STATE_OVERRIDE__');
+      localStorage.removeItem('studyspace_settings');
     });
     await page.reload();
-    
-    // Fallback load_settings should still function and load default settings
-    await expect(page.locator('html')).toHaveClass(/theme-dark/);
-    await expect(page.locator('[data-testid="editor-header-title"]')).toHaveText(/welcome.md/);
+
+    // The boundary is actually gone, not just no-op deleted.
+    expect(await page.evaluate(() => (window as any).__TAURI_INTERNALS__ === undefined)).toBe(true);
+
+    // The shell still renders — failing loudly is not the same as crashing.
+    await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
+    await expect(page.locator('[data-testid="editor-pane"]')).toBeVisible();
+
+    // No fabricated file. The old fixture path '/vault/welcome.md' must not
+    // reappear, and the editor must show its empty state.
+    await expect(page.locator('[data-testid="editor-header-title"]')).toHaveText('No file open');
+    await expect(page.locator('[data-testid="editor-empty-state"]')).toBeVisible();
+    await expect(page.locator('[data-testid="markdown-textarea"]')).toHaveCount(0);
+
+    // No fabricated vault listing either.
+    await expect(page.locator('[data-testid^="file-item-"]')).toHaveCount(0);
+
+    // And the failure is reported rather than swallowed.
+    await expect
+      .poll(() => consoleErrors.join('\n'), { timeout: 5000 })
+      .toMatch(/no backend/i);
   });
 
   test('T2_CORE_3: High-Frequency Window Resizing Stress Test', async ({ page }) => {

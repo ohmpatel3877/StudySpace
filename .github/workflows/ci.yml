@@ -28,11 +28,40 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: E2E tests (mock frontend)
-        run: npm run test:e2e:mock
+      # Was missing entirely — Playwright cannot launch without browser binaries.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-      - name: Cargo check (src-tauri)
+      # Drives the real React app in src/ via `vite preview` over dist/,
+      # with the Tauri IPC layer mocked at the invoke boundary.
+      - name: E2E tests
+        run: npm run test:e2e
+
+      # Tauri needs system libs on Linux before cargo can build src-tauri.
+      - name: Install Tauri system dependencies
         run: |
-          cd src-tauri
-          cargo check 2>&1 || echo "cargo not available, skipping"
-        shell: bash
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # NOTE: previously `cargo check 2>&1 || echo "cargo not available, skipping"`,
+      # which swallowed EVERY failure — not just a missing toolchain — so the Rust
+      # backend was never compile-checked by CI. See AUDIT.md Finding 3.
+      - name: Cargo fmt
+        working-directory: src-tauri
+        run: cargo fmt --check
+
+      - name: Cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy -- -D warnings
+
+      - name: Cargo check
+        working-directory: src-tauri
+        run: cargo check

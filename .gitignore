@@ -25,3 +25,8 @@ dist-ssr
 
 # Rust build artifacts
 src-tauri/target/
+
+# Build caches / test output
+tsconfig.tsbuildinfo
+test-results/
+playwright-report/
