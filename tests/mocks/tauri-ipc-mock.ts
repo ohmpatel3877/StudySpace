@@ -1,7 +1,7 @@
 import { test as base } from '@playwright/test';
 
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  page: async ({ page }, fixture) => {
     // Inject Tauri API mock before application boot
     await page.addInitScript(() => {
       const mockVaultFiles = [
@@ -286,6 +286,6 @@ export const test = base.extend({
 
       (window as any).__MOCK_TAURI_ACTIVE__ = true;
     });
-    await use(page);
+    await fixture(page);
   }
 });
